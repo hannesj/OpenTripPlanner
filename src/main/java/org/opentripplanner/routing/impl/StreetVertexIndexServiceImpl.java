@@ -376,11 +376,11 @@ public class StreetVertexIndexServiceImpl implements StreetVertexIndexService {
         CandidateEdgeBundle best = null;
         for (CandidateEdgeBundle bundle : bundles) {
             if (best == null || bundle.best.score < best.best.score) {
-                if (possibleTransitLinksOnly) {
-                    // assuming all platforms are tagged when they are not car streets... #1077 
-                    if (!(bundle.allowsCars() || bundle.isPlatform()))
-                        continue;
-                }
+//                if (possibleTransitLinksOnly) {
+//                    // assuming all platforms are tagged when they are not car streets... #1077
+//                    if (!(bundle.allowsCars() || bundle.isPlatform()))
+//                        continue;
+//                }
                 best = bundle;
             }
         }
@@ -398,7 +398,7 @@ public class StreetVertexIndexServiceImpl implements StreetVertexIndexService {
      * 
      * TODO(flamholz): consider deleting.
      * 
-     * @param coordinate Point to get edges near
+     * @param location Point to get edges near
      * @param request RoutingRequest that must be able to traverse the edge (all edges if null)
      * @param extraEdges Any edges not in the graph that might be included (allows trips within one block)
      * @param preferredEdges Any edges to prefer in the search
