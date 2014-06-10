@@ -32,6 +32,7 @@ import org.opentripplanner.graph_builder.impl.ned.ElevationGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.ned.NEDGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl;
+import org.opentripplanner.graph_builder.impl.osm.ServiceMapGraphBuilderImpl;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.services.GraphBuilder;
 import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
@@ -56,7 +57,7 @@ public class OTPConfigurator {
     private final CommandLineParameters params;
     
     private GraphService graphService = null;
-    
+
     public OTPConfigurator (CommandLineParameters params) {
         this.params = params;
     }
@@ -119,6 +120,7 @@ public class OTPConfigurator {
         List<File> gtfsFiles = Lists.newArrayList();
         List<File> osmFiles =  Lists.newArrayList();
         File configFile = null;
+        File servicemapFile = null;
         /* For now this is adding files from all directories listed, rather than building multiple graphs. */
         for (File dir : params.build) {
             LOG.info("Searching for graph builder input files in {}", dir);
@@ -136,6 +138,10 @@ public class OTPConfigurator {
                 case OSM:
                     LOG.info("Found OSM file {}", file);
                     osmFiles.add(file);
+                    break;
+                case SERVICEMAP:
+                    LOG.info("Found ServiceMap file {}", file);
+                    servicemapFile = file;
                     break;
                 case CONFIG:
                     if (!params.noEmbedConfig) {
@@ -167,6 +173,9 @@ public class OTPConfigurator {
             graphBuilder.addGraphBuilder(osmBuilder);
             graphBuilder.addGraphBuilder(new PruneFloatingIslands());            
         }
+        if (servicemapFile != null) {
+            graphBuilder.addGraphBuilder(new ServiceMapGraphBuilderImpl(servicemapFile));
+        }
         if ( hasGTFS ) {
             List<GtfsBundle> gtfsBundles = Lists.newArrayList();
             for (File gtfsFile : gtfsFiles) {
@@ -189,7 +198,7 @@ public class OTPConfigurator {
                         graphBuilder.addGraphBuilder(new StreetlessStopLinker());
                     }
                 }
-            } 
+            }
             if ( hasOSM ) {
                 graphBuilder.addGraphBuilder(new TransitToStreetNetworkGraphBuilderImpl());
                 // The stops can be linked to each other once they have links to the street network.
@@ -231,7 +240,8 @@ public class OTPConfigurator {
     }
 
     private static enum InputFileType {
-        GTFS, OSM, CONFIG, OTHER;
+        GTFS, OSM, CONFIG, OTHER, SERVICEMAP;
+
         public static InputFileType forFile(File file) {
             String name = file.getName();
             if (name.endsWith(".zip")) {
@@ -246,6 +256,7 @@ public class OTPConfigurator {
             if (name.endsWith(".osm")) return OSM;
             if (name.endsWith(".osm.xml")) return OSM;
             if (name.equals("Embed.properties")) return CONFIG;
+            if (name.equals("unit.json")) return SERVICEMAP;
             return OTHER;
         }
     }
