@@ -13,10 +13,14 @@
 
 package org.opentripplanner.routing.vertextype;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+
+import java.util.Map;
 
 /** Abstract base class for vertices in the GTFS layer of the graph. */
 public abstract class TransitVertex extends Vertex {
@@ -24,6 +28,10 @@ public abstract class TransitVertex extends Vertex {
     private static final long serialVersionUID = 53855622892837370L;
 
     private final Stop stop;
+
+    @Getter
+    @Setter
+    private Map<String, String> accessibilityInformation = null;
 
     public TransitVertex(Graph graph, String label, Stop stop) {
         super(graph, label, stop.getLon(), stop.getLat(), stop.getName());

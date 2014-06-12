@@ -15,7 +15,6 @@ package org.opentripplanner.standalone;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.zip.ZipEntry;
@@ -24,6 +23,7 @@ import java.util.zip.ZipFile;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.graph_builder.impl.EmbeddedConfigGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.GtfsGraphBuilderImpl;
+import org.opentripplanner.graph_builder.impl.JOREAccessibilityGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.PruneFloatingIslands;
 import org.opentripplanner.graph_builder.impl.StreetfulStopLinker;
 import org.opentripplanner.graph_builder.impl.StreetlessStopLinker;
@@ -121,6 +121,7 @@ public class OTPConfigurator {
         List<File> osmFiles =  Lists.newArrayList();
         File configFile = null;
         File servicemapFile = null;
+        File joreAccessibilityFile = null;
         /* For now this is adding files from all directories listed, rather than building multiple graphs. */
         for (File dir : params.build) {
             LOG.info("Searching for graph builder input files in {}", dir);
@@ -142,6 +143,10 @@ public class OTPConfigurator {
                 case SERVICEMAP:
                     LOG.info("Found ServiceMap file {}", file);
                     servicemapFile = file;
+                    break;
+                case JORE_ACCESSIBILITY:
+                    LOG.info("Found JORE accessibility file {}", file);
+                    joreAccessibilityFile = file;
                     break;
                 case CONFIG:
                     if (!params.noEmbedConfig) {
@@ -192,6 +197,9 @@ public class OTPConfigurator {
             // When using the long distance path service, or when there is no street data,
             // link stops to each other based on distance only, unless user has requested linking
             // based on transfers.txt or the street network (if available).
+            if (joreAccessibilityFile != null){
+                graphBuilder.addGraphBuilder(new JOREAccessibilityGraphBuilderImpl(joreAccessibilityFile));
+            }
             if ((!hasOSM ) || params.longDistance) {
                 if (!params.useTransfersTxt) {
                     if (!hasOSM || !params.useStreetsForLinking) {
@@ -240,7 +248,7 @@ public class OTPConfigurator {
     }
 
     private static enum InputFileType {
-        GTFS, OSM, CONFIG, OTHER, SERVICEMAP;
+        GTFS, OSM, CONFIG, OTHER, SERVICEMAP, JORE_ACCESSIBILITY;
 
         public static InputFileType forFile(File file) {
             String name = file.getName();
@@ -257,6 +265,7 @@ public class OTPConfigurator {
             if (name.endsWith(".osm.xml")) return OSM;
             if (name.equals("Embed.properties")) return CONFIG;
             if (name.equals("unit.json")) return SERVICEMAP;
+            if (name.equals("esteet.dat")) return JORE_ACCESSIBILITY;
             return OTHER;
         }
     }
