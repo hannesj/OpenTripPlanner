@@ -85,7 +85,7 @@ public class GrizzlyServer {
 
         /* 2. A static content handler to serve the client JS apps etc. from the classpath. */
         HttpHandler staticHandler = new CLStaticHttpHandler(GrizzlyServer.class.getClassLoader(), "/client/");
-        httpServer.getServerConfiguration().addHttpHandler(staticHandler, "/");
+        httpServer.getServerConfiguration().addHttpHandler(staticHandler, "/otp-demo/");
 
         /* 3. Test alternate method (no Jersey). */
         // As in servlets, * is needed in base path to identify the "rest" of the path.
