@@ -21,6 +21,8 @@ import com.vividsolutions.jts.geom.Point;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.PrecisionModel;
 
+import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.services.GraphService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -56,7 +59,17 @@ public class PointSet {
     
     Map<String,Category> categories = new ConcurrentHashMap<String,Category>();
     public int capacity = 0;      // The total number of features this PointSet can hold.
-    public SampleSet samples;     // Connects this population to vertices in a Graph.
+    
+    /* Connects this population to vertices in a given Graph (map of graph ids to sample sets).
+     * Keeping  as a graphId->sampleSet map to prevent duplication of pointset when used across multiple graphs
+     */
+    private HashMap<String,SampleSet> samples = new HashMap<String,SampleSet>();     
+
+    protected GraphService graphService;
+    
+    
+    /* In a detailed Indicator, the time to reach each target, for each origin. Null in non-indicator pointsets. */
+    public int[][] times;
 
     /**
      * The geometries of the features.
@@ -357,6 +370,31 @@ public class PointSet {
     	polygons = new Polygon[capacity];
     }
 
+    /** 
+     * Adds a grpah service to allow for auto creation of SampleSets for a given graph
+     * @param reference to the application graph service
+     */
+    
+    public void setGraphService(GraphService graphService) {
+    	this.graphService = graphService;
+    }	
+    
+    /** 
+     * gets a sample set for a given graph id 
+     * @param a valid graph id
+     */
+    
+    public SampleSet getSampleSet(String routerId) {
+    	if(this.samples.containsKey(routerId))
+    		return this.samples.get(routerId);
+    	Graph g = this.graphService.getGraph(routerId);
+    	if(g == null)
+    		return null;    	
+    	SampleSet sampleSet = new SampleSet(this, g.getSampleFactory());
+    	this.samples.put(routerId, sampleSet);
+    	return sampleSet;
+    }
+    
     /**
      * Add a single feature with a variable number of free-form attributes.
      * Attribute data contains id value pairs, ids are in form "cat_id:attr_id".
@@ -525,10 +563,8 @@ public class PointSet {
 	                	}
 	                	
 	                } jgen.writeEndObject();
-	                
-	           
             	} jgen.writeEndObject();
-                
+
                 jgen.writeArrayFieldStart("features"); {
                     for (int f = 0; f < capacity; f++) {
                         writeFeature(f, jgen, forcePoints);
@@ -541,6 +577,18 @@ public class PointSet {
         }
     }
 
+    /**
+     * Pairs an array of times with the array of features in this pointset, writing out the resulting (ID,time)
+     * pairs to a JSON object.
+     */
+    private void writeTimes(JsonGenerator jgen, int[] times) throws IOException {
+    	jgen.writeObjectFieldStart("times");
+        for (int i = 0; i < times.length; i++) { // capacity is now 1 if this is a one-to-many indicator
+            int t = times[i];
+            if (t != Integer.MAX_VALUE) jgen.writeNumberField(ids[i], t);
+        }
+        jgen.writeEndObject();
+    }
     
     /**
      * This writes either a polygon or lat/lon point defining the feature. In the case of polygons, 
@@ -573,6 +621,10 @@ public class PointSet {
             }
             jgen.writeObjectFieldStart("properties"); {
                 writeStructured(i, jgen);
+                /* Write out travel times to each target ID if this is a detailed indicator. */
+                if (this instanceof Indicator && times != null) {
+                    ((Indicator)this).targets.writeTimes(jgen, times[i]);
+                }
             } jgen.writeEndObject();
         } jgen.writeEndObject();
     }

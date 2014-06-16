@@ -50,6 +50,9 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.calendar.CalendarServiceData;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.gtfs.services.calendar.CalendarService;
+import org.opentripplanner.analyst.core.GeometryIndex;
+import org.opentripplanner.analyst.core.SampleSource;
+import org.opentripplanner.analyst.request.SampleFactory;
 import org.opentripplanner.api.resource.GraphMetadata;
 import org.opentripplanner.common.IterableLibrary;
 import org.opentripplanner.common.MavenVersion;
@@ -119,6 +122,7 @@ public class Graph implements Serializable {
 
     private boolean debugData = true;
 
+    // TODO this would be more efficient if it was just an array.
     private transient Map<Integer, Vertex> vertexById;
 
     private transient Map<Integer, Edge> edgeById;
@@ -126,6 +130,10 @@ public class Graph implements Serializable {
     public transient StreetVertexIndexService streetIndex;
 
     public transient GraphIndex index;
+    
+    private transient GeometryIndex geomIndex;
+    
+    private transient SampleFactory sampleFactory;
     
     public final Deduplicator deduplicator = new Deduplicator();
 
@@ -854,5 +862,23 @@ public class Graph implements Serializable {
         return hull;
 
     }
+   
+    // lazy-init geom index on an as needed basis
+    public GeometryIndex getGeomIndex() {
+    	
+    	if(this.geomIndex == null)
+    		this.geomIndex = new GeometryIndex(this);
+    	
+    	return this.geomIndex;
+    }
 
+ // lazy-init sample factor on an as needed basis
+    public SampleFactory getSampleFactory() {
+    	if(this.sampleFactory == null)
+    		this.sampleFactory = new SampleFactory(this.getGeomIndex());
+    	
+    	return this.sampleFactory;	
+    }
+    
+   
 }

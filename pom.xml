@@ -210,7 +210,7 @@
                               <includes> <include>**</include> </includes> </filter> </filters> -->
                             <artifactSet>
                                 <excludes>
-                                    <!-- Do not explode the client WAR. -->
+			            <!-- Do not explode the client WAR. -->
                                     <!-- Actually, shade seems to skip the WAR even without this exclusion (verify) -->
                                     <exclude>org.opentripplanner:otp-leaflet-client</exclude>
                                     --&gt;

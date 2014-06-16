@@ -1,7 +1,9 @@
 package org.opentripplanner.standalone;
 
 import com.google.common.collect.Maps;
+
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.opentripplanner.analyst.DiskBackedPointSetCache;
 import org.opentripplanner.analyst.PointSetCache;
 import org.opentripplanner.analyst.SurfaceCache;
 import org.opentripplanner.analyst.core.GeometryIndex;
@@ -25,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.ext.Provider;
+
+import java.io.File;
 import java.util.Map;
 
 /**
@@ -48,8 +52,6 @@ public class OTPServer {
     public Renderer renderer;
     public SPTCache sptCache;
     public TileCache tileCache;
-    public GeometryIndex geometryIndex;
-    public SampleFactory sampleFactory;
     public IsoChroneSPTRenderer isoChroneSPTRenderer;
     public SampleGridRenderer sampleGridRenderer;
     public SurfaceCache surfaceCache;
@@ -83,17 +85,15 @@ public class OTPServer {
 
         planGenerator = new PlanGenerator(graphService, pathService);
 
-        // Optional Analyst Modules. They only work with default graph for now.
+        // Optional Analyst Modules.
         if (params.analyst) {
-            geometryIndex = new GeometryIndex(graphService);
-            sampleFactory = new SampleFactory(geometryIndex);
-            tileCache = new TileCache(sampleFactory);
+            tileCache = new TileCache(graphService);
             sptCache = new SPTCache(sptService, graphService);
             renderer = new Renderer(tileCache, sptCache);
             sampleGridRenderer = new SampleGridRenderer(graphService, sptService);
             isoChroneSPTRenderer = new IsoChroneSPTRendererAccSampling(graphService, sptService, sampleGridRenderer);
-            surfaceCache = new SurfaceCache(20);
-            pointSetCache = new PointSetCache(sampleFactory);
+            surfaceCache = new SurfaceCache(30);
+            pointSetCache = new DiskBackedPointSetCache(100, new File(params.pointSetDirectory), graphService);
         }
 
     }
