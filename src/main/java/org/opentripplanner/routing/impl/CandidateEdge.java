@@ -24,7 +24,7 @@ public class CandidateEdge {
 
     // Massive preference for streets that allow cars, also applied to platforms for vehicles of
     // the specified mode. 
-    private static final double CAR_PREFERENCE = 100;
+    private static final double CAR_PREFERENCE = -10;
 
     private static final double MAX_DIRECTION_DIFFERENCE = 180.0;
 
