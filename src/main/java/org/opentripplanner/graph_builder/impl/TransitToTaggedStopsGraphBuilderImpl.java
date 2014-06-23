@@ -60,7 +60,7 @@ public class TransitToTaggedStopsGraphBuilderImpl implements GraphBuilder {
             if (ts.isEntrance() || !ts.hasEntrances()) {
                 boolean wheelchairAccessible = ts.hasWheelchairEntrance();
                 if (!connectVertexToStop(ts, wheelchairAccessible)) {
-                    LOG.info("Could not connect " + ts.toString());
+                    LOG.debug("Could not connect " + ts.toString());
                     //LOG.warn(graph.addBuilderAnnotation(new StopUnlinked(ts)));
                 }
             }
@@ -69,7 +69,9 @@ public class TransitToTaggedStopsGraphBuilderImpl implements GraphBuilder {
 
     private boolean connectVertexToStop(TransitStop ts, boolean wheelchairAccessible) {
         String stopCode = ts.getStopCode();
-        String stopId = ts.getStopId().getId();
+        if (stopCode == null){
+            return false;
+        }
         Envelope envelope = new Envelope(ts.getCoordinate());
         envelope.expandBy(0.003); // ~200 meters
         Collection<Vertex> vertices = index.getVerticesForEnvelope(envelope);
@@ -78,19 +80,17 @@ public class TransitToTaggedStopsGraphBuilderImpl implements GraphBuilder {
                 continue;
             }
             TransitStopStreetVertex tsv = (TransitStopStreetVertex) v;
-            if (tsv.getStopCode() != null) {
-                if ((stopId != null && tsv.getStopCode().matches(stopId))
-                        || (stopCode != null && tsv.getStopCode().matches(stopCode))) {
-                    new StreetTransitLink(ts, tsv, wheelchairAccessible);
-                    new StreetTransitLink(tsv, ts, wheelchairAccessible);
-                    LOG.info("Connected " + ts.toString() + " to " + tsv.getLabel());
-                    return true;
-                }
+
+            // Only use stop codes for linking TODO: find better method to connect stops without stop code
+            if (tsv.getStopCode() != null && tsv.getStopCode().equals(stopCode)) {
+                new StreetTransitLink(ts, tsv, wheelchairAccessible);
+                new StreetTransitLink(tsv, ts, wheelchairAccessible);
+                LOG.debug("Connected " + ts.toString() + " to " + tsv.getLabel());
+                return true;
             }
         }
         return false;
     }
-
 
     @Override
     public void checkInputs() {
