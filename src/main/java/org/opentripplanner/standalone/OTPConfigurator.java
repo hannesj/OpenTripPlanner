@@ -25,6 +25,7 @@ import org.opentripplanner.graph_builder.impl.EmbeddedConfigGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.GtfsGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.JOREAccessibilityGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.PruneFloatingIslands;
+import org.opentripplanner.graph_builder.impl.ServiceMapAccessibilityGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.ServiceMapGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.StreetfulStopLinker;
 import org.opentripplanner.graph_builder.impl.StreetlessStopLinker;
@@ -122,6 +123,7 @@ public class OTPConfigurator {
         List<File> osmFiles =  Lists.newArrayList();
         File configFile = null;
         File servicemapFile = null;
+        File servicemapAccessibilityFile = null;
         File joreAccessibilityFile = null;
         /* For now this is adding files from all directories listed, rather than building multiple graphs. */
         for (File dir : params.build) {
@@ -144,6 +146,10 @@ public class OTPConfigurator {
                 case SERVICEMAP:
                     LOG.info("Found ServiceMap file {}", file);
                     servicemapFile = file;
+                    break;
+                case SERVICEMAP_ACCESSIBILITY:
+                    LOG.info("Found ServiceMap accessibility file {}", file);
+                    servicemapAccessibilityFile = file;
                     break;
                 case JORE_ACCESSIBILITY:
                     LOG.info("Found JORE accessibility file {}", file);
@@ -181,6 +187,9 @@ public class OTPConfigurator {
         }
         if (servicemapFile != null) {
             graphBuilder.addGraphBuilder(new ServiceMapGraphBuilderImpl(servicemapFile));
+            if (servicemapAccessibilityFile != null){
+                graphBuilder.addGraphBuilder(new ServiceMapAccessibilityGraphBuilderImpl(servicemapAccessibilityFile));
+            }
         }
         if ( hasGTFS ) {
             List<GtfsBundle> gtfsBundles = Lists.newArrayList();
@@ -250,7 +259,7 @@ public class OTPConfigurator {
     }
 
     private static enum InputFileType {
-        GTFS, OSM, CONFIG, OTHER, SERVICEMAP, JORE_ACCESSIBILITY;
+        GTFS, OSM, CONFIG, OTHER, SERVICEMAP, SERVICEMAP_ACCESSIBILITY, JORE_ACCESSIBILITY;
 
         public static InputFileType forFile(File file) {
             String name = file.getName();
@@ -267,6 +276,7 @@ public class OTPConfigurator {
             if (name.endsWith(".osm.xml")) return OSM;
             if (name.equals("Embed.properties")) return CONFIG;
             if (name.equals("unit.json")) return SERVICEMAP;
+            if (name.equals("accessibility_property.json")) return SERVICEMAP_ACCESSIBILITY;
             if (name.equals("esteet.dat")) return JORE_ACCESSIBILITY;
             return OTHER;
         }

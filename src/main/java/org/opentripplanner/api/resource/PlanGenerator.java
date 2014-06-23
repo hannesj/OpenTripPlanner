@@ -66,6 +66,7 @@ import org.opentripplanner.routing.util.ElevationProfileSegment;
 import org.opentripplanner.routing.vertextype.ExitVertex;
 import org.opentripplanner.routing.vertextype.OffboardVertex;
 import org.opentripplanner.routing.vertextype.OnboardDepartVertex;
+import org.opentripplanner.routing.vertextype.PoiVertex;
 import org.opentripplanner.routing.vertextype.TransitVertex;
 import org.opentripplanner.util.PolylineEncoder;
 import org.slf4j.Logger;
@@ -731,6 +732,8 @@ public class PlanGenerator {
             if (tripTimes != null) {
                 place.stopSequence = tripTimes.getStopSequence(place.stopIndex);
             }
+        }  else if (vertex instanceof PoiVertex){
+            place.accessibilityInformation = ((PoiVertex) vertex).getAccessibilityViewpoints();
         }
 
         return place;
