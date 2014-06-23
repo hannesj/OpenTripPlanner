@@ -24,7 +24,7 @@ public class CandidateEdge {
 
     // Massive preference for streets that allow cars, also applied to platforms for vehicles of
     // the specified mode. 
-    private static final double CAR_PREFERENCE = 0;
+    private static final double PEDESTRIAN_PREFERENCE = 40;
 
     private static final double MAX_DIRECTION_DIFFERENCE = 180.0;
 
@@ -237,12 +237,12 @@ public class CandidateEdge {
             myScore /= SIDEWALK_PREFERENCE;
         }
         // apply strong preference to car edges and to platforms for the specified modes 
-        if (edge.getPermission().allows(StreetTraversalPermission.CAR)
+        if (edge.getPermission().allows(StreetTraversalPermission.PEDESTRIAN)
                 || (edge.getStreetClass() & platform) != 0) {
             // we're subtracting here because no matter how close we are to a
             // good non-car non-platform edge, we really want to avoid it in
             // case it's a Pedway or other weird and unlikely starting location.
-            myScore -= CAR_PREFERENCE;
+            myScore -= PEDESTRIAN_PREFERENCE;
         }
 
         // Consider the heading in the score if it is available.

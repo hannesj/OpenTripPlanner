@@ -322,7 +322,7 @@ public class StreetVertexIndexServiceImpl implements StreetVertexIndexService {
                     extraStreets);
         }
 
-        double envelopeGrowthAmount = 0.001; // ~= 100 meters
+        double envelopeGrowthAmount = 0.0004; // ~= 40 meters
         double radius = 0;
         CandidateEdgeBundle candidateEdges = new CandidateEdgeBundle();
         while (candidateEdges.size() == 0) {

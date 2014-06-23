@@ -292,7 +292,8 @@ public class LinkRequest {
                 forwardGeometryPair.getSecond(), name, lengthOut, e1.getPermission(), true);
 
         if (e1 instanceof AreaEdge) {
-            ((AreaEdge) e1).getArea().addVertex(e1midpoint, linker.graph);
+            //((AreaEdge) e1).getArea().addVertex(e1midpoint, linker.graph);
+
         }
 
         addEdges(forward1, forward2);
@@ -307,7 +308,7 @@ public class LinkRequest {
             backward2 = new PlainStreetEdge(e2midpoint, e2v2, backGeometryPair.getSecond(),
                     name, lengthIn, e2.getPermission(), true);
             if (e2 instanceof AreaEdge) {
-                ((AreaEdge) e2).getArea().addVertex(e2midpoint, linker.graph);
+                //((AreaEdge) e2).getArea().addVertex(e2midpoint, linker.graph);
             }
             double backwardBseLengthIn = e2.getBicycleSafetyEffectiveLength() * lengthRatioIn;
             double backwardBseLengthOut = e2.getBicycleSafetyEffectiveLength() * (1 - lengthRatioIn);
