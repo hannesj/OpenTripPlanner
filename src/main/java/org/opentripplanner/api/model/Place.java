@@ -16,7 +16,7 @@ package org.opentripplanner.api.model;
 import java.util.Calendar;
 import java.util.Map;
 import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlElement; 
 
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opentripplanner.util.Constants; 
@@ -71,8 +71,8 @@ public class Place {
     public Calendar departure = null;
 
     /**
-     * Information regarding the accessibility of the stop.
-     */
+      * Information regarding the accessibility of the place.
+      */
     @XmlElement
     public Map<String, String> accessibilityInformation = null;
 
