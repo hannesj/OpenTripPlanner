@@ -128,6 +128,9 @@ public class GraphUpdaterConfigurator {
                         else if (type.equals("example-polling-updater")) {
                             updater = new ExamplePollingGraphUpdater();
                         }
+                        else if (type.equals("winkki-polling-updater")) {
+                            updater = new WinkkiPollingGraphUpdater();
+                        }
                     }
                     
                     // Configure and activate the updaters
