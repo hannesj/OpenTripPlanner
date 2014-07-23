@@ -24,7 +24,7 @@ public class CandidateEdge {
 
     // Massive preference for streets that allow cars, also applied to platforms for vehicles of
     // the specified mode. 
-    private static final double PEDESTRIAN_PREFERENCE = 40;
+    private static final double PEDESTRIAN_PREFERENCE = 50;
 
     private static final double MAX_DIRECTION_DIFFERENCE = 180.0;
 
@@ -137,7 +137,7 @@ public class CandidateEdge {
         }
 
         // Calculate the score last so it can use all other data.
-        score = calcScore();
+        score = calcScore(mode);
     }
 
     /** Construct CandidateEdge based on a Coordinate. */
@@ -223,25 +223,33 @@ public class CandidateEdge {
     }
 
     /** Internal calculator for the score. Assumes that edge, platform and distance are initialized. */
-    private double calcScore() {
+    private double calcScore(TraverseModeSet mode) {
         double myScore = 0;
         // why is this being scaled by 1/360th of the radius of the earth?
         myScore = distance * SphericalDistanceLibrary.RADIUS_OF_EARTH_IN_M / 360.0;
         myScore /= preference;
-        if ((edge.getStreetClass() & platform) != 0) {
+        if (mode.isTransit() && (edge.getStreetClass() & platform) != 0) {
             // this a hack, but there's not really a better way to do it
             myScore /= PLATFORM_PREFERENCE;
         }
+
         if (edge.getName().contains("sidewalk")) {
             // this is a hack, but there's not really a better way to do it
             myScore /= SIDEWALK_PREFERENCE;
         }
         // apply strong preference to car edges and to platforms for the specified modes 
-        if (edge.getPermission().allows(StreetTraversalPermission.PEDESTRIAN)
-                || (edge.getStreetClass() & platform) != 0) {
-            // we're subtracting here because no matter how close we are to a
-            // good non-car non-platform edge, we really want to avoid it in
-            // case it's a Pedway or other weird and unlikely starting location.
+        if (mode.getWalk() && (edge.getPermission().allows(StreetTraversalPermission.PEDESTRIAN)
+                || (edge.getStreetClass() & platform) != 0)) {
+            myScore -= PEDESTRIAN_PREFERENCE;
+        }
+
+        if (mode.getBicycle() && (edge.getPermission().allows(StreetTraversalPermission.BICYCLE)
+                || (edge.getStreetClass() & platform) != 0)) {
+            myScore -= PEDESTRIAN_PREFERENCE;
+        }
+
+        if (mode.getDriving() && (edge.getPermission().allows(StreetTraversalPermission.CAR)
+                || (edge.getStreetClass() & platform) != 0)) {
             myScore -= PEDESTRIAN_PREFERENCE;
         }
 

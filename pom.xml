@@ -135,7 +135,7 @@
                 <!-- Generate REST API documentation from Jersey-annotated classes -->
                 <groupId>org.codehaus.enunciate</groupId>
                 <artifactId>maven-enunciate-plugin</artifactId>
-                <version>1.28</version>
+                <version>1.29</version>
                 <executions>
                     <execution>
                         <!-- default binding for docs goal is process-sources phase, since enunciate can make a web service -->
