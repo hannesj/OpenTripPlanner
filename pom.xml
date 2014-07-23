@@ -461,7 +461,7 @@
         <dependency>
             <groupId>com.ning</groupId>
             <artifactId>async-http-client</artifactId>
-            <version>1.7.19</version>
+            <version>1.8.12</version>
         </dependency>
 
         <!-- OTHER DEPENDENCIES -->
@@ -569,7 +569,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.1.2</version>
+            <version>4.2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

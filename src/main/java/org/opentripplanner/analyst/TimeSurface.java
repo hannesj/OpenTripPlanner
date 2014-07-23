@@ -2,6 +2,7 @@ package org.opentripplanner.analyst;
 
 import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
+
 import org.apache.commons.math3.util.FastMath;
 import org.opentripplanner.analyst.core.IsochroneData;
 import org.opentripplanner.analyst.request.SampleGridRenderer;
@@ -19,6 +20,7 @@ import org.opentripplanner.analyst.request.SampleGridRenderer.WTWD;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +33,7 @@ import static org.apache.commons.math3.util.FastMath.toRadians;
  * In Portland, one timesurface takes roughly one MB of memory and is also about that size as JSON.
  * However it is proportionate to the graph size not the time cutoff.
  */
-public class TimeSurface {
+public class TimeSurface implements Serializable{
 
     private static final Logger LOG = LoggerFactory.getLogger(TimeSurface.class);
     public static final int UNREACHABLE = -1;
@@ -50,7 +52,15 @@ public class TimeSurface {
 
     public TimeSurface(ShortestPathTree spt) {
     	
-    	routerId = spt.getOptions().routerId;
+    	params = spt.getOptions().parameters;
+    	
+        String routerId = spt.getOptions().routerId;
+        if (routerId == null || routerId.isEmpty() || routerId.equalsIgnoreCase("default")) {
+            routerId = "default";
+        }
+        // Here we use the key "default" unlike the graphservice which substitutes in the default ID.
+        // We don't want to keep that default in sync across two modules.
+    	this.routerId = routerId;
         long t0 = System.currentTimeMillis();
         times = new int[Vertex.getMaxIndex()]; // memory leak due to temp vertices?
         Arrays.fill(times, UNREACHABLE);
