@@ -13,6 +13,8 @@
 
 package org.opentripplanner.routing.alertpatch;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
+
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashSet;
@@ -38,6 +40,14 @@ public class Alert implements Serializable {
     //null means unknown
     @XmlElement
     public Date effectiveStartDate;
+
+    //null means unknown
+    @XmlElement
+    public Date effectiveEndDate;
+
+    @XmlElement
+    @JsonRawValue
+    public String geometry;
 
     public static HashSet<Alert> newSimpleAlertSet(String text) {
         Alert note = createSimpleAlerts(text);

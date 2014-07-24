@@ -1,53 +1,41 @@
 package org.opentripplanner.updater;
 
-import com.vividsolutions.jts.geom.Envelope;
 import com.vividsolutions.jts.geom.Geometry;
-import org.geotools.data.DataStore;
-import org.geotools.data.DataStoreFinder;
 import org.geotools.data.FeatureSource;
 import org.geotools.data.Query;
 import org.geotools.data.wfs.WFSDataStore;
 import org.geotools.data.wfs.WFSDataStoreFactory;
-import org.geotools.feature.FeatureCollection;
 import org.geotools.feature.FeatureIterator;
-import org.geotools.geometry.jts.ReferencedEnvelope;
+import org.geotools.geojson.geom.GeometryJSON;
 import org.geotools.referencing.CRS;
-import org.opengis.feature.Feature;
-import org.opengis.feature.Property;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.opengis.feature.type.FeatureType;
-import org.opengis.geometry.TransfiniteSet;
 import org.opengis.referencing.FactoryException;
-import org.opentripplanner.analyst.core.GeometryIndex;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.alertpatch.TranslatedString;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.services.StreetVertexIndexService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.prefs.Preferences;
 
-import static org.geotools.referencing.CRS.getAuthorityFactory;
-
 public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
 
-
     private static Logger LOG = LoggerFactory.getLogger(WinkkiPollingGraphUpdater.class);
+    private static final double SEARCH_RADIUS_M = 30; // meters
+    private static final double SEARCH_RADIUS_DEG = SphericalDistanceLibrary.metersToDegrees(SEARCH_RADIUS_M);
 
     private GraphUpdaterManager updaterManager;
 
@@ -58,7 +46,9 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
     private Query query;
     private FeatureSource<SimpleFeatureType, SimpleFeature> source;
 
-    private Set<PlainStreetEdge> arrayEdges= new HashSet<>();
+    private Set<StreetEdge> alertEdges = new HashSet<>();
+
+    private GeometryJSON g = new GeometryJSON(8);
 
     // Here the updater can be configured using the properties in the file 'Graph.properties'.
     // The property frequencySec is already read and used by the abstract base class.
@@ -111,11 +101,11 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
 
     // This is a private GraphWriterRunnable that can be executed to modify the graph
     private class ExampleGraphWriter implements GraphWriterRunnable {
-        ArrayList<String> winkkiAlerts = new ArrayList<String>();
 
         @Override
         public void run(Graph graph) {
             FeatureIterator<SimpleFeature> features = null;
+            Set<StreetEdge> newAlertEdges = new HashSet<>();
 
             try {
                 features = source.getFeatures(query).features();
@@ -124,22 +114,64 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
             }
             while ( features.hasNext()){
                 SimpleFeature feature = features.next();
-                LOG.info(feature.getAttribute("event_identifier").toString());
+                LOG.debug(feature.getAttribute("event_identifier").toString());
                 if (feature.getDefaultGeometry() == null){
                     continue;
                 }
                 Geometry geom = (Geometry) feature.getDefaultGeometry();
-                Collection<StreetEdge> edges = graph.streetIndex.getEdgesForEnvelope(geom.getEnvelopeInternal());
+
+                Alert a = Alert.createSimpleAlerts("winkki:" + feature.getAttribute("licence_type"));
+                a.alertDescriptionText = feature.getAttribute("event_description") == null ? new TranslatedString("") : new TranslatedString(feature.getAttribute("event_description").toString());
+                a.effectiveStartDate = feature.getAttribute("licence_startdate") == null ? (Date) feature.getAttribute("event_startdate") : (Date) feature.getAttribute("licence_startdate");
+                a.effectiveEndDate = feature.getAttribute("licence_enddate") == null ? (Date) feature.getAttribute("event_enddate") : (Date) feature.getAttribute("licence_enddate");
+                a.geometry = g.toString(geom);
+
+                if (a.effectiveStartDate.after(new Date()) || a.effectiveEndDate.before(new Date()))
+                    continue;
+
+                Geometry searchArea = geom.buffer(SEARCH_RADIUS_DEG);
+                Collection<StreetEdge> edges = graph.streetIndex.getEdgesForEnvelope(searchArea.getEnvelopeInternal());
                 for(StreetEdge e: edges){
-                    if (!(e instanceof PlainStreetEdge) || geom.disjoint(e.getGeometry()))
+                    if (!(e instanceof PlainStreetEdge) || searchArea.disjoint(e.getGeometry()))
                         continue;
-                    HashSet<Alert> a = Alert.newSimpleAlertSet("winkki:" + feature.getAttribute("licence_type"));
-                    a.iterator().next().alertDescriptionText = new TranslatedString(feature.getAttributes().toString());
-                    a.iterator().next().effectiveStartDate = (Date) feature.getAttribute("event_startdate");
-                    ((PlainStreetEdge) e).setNote(a);
-                    LOG.info("Intersects with: " + e.getLabel());
+                    if (alertEdges.contains(e)){
+                        removeAlerts(e);
+                        alertEdges.remove(e);
+                    }
+
+                    Set<Alert> notes = e.getNotes();
+                    if (notes == null){
+                        notes = new HashSet<Alert>();
+                        notes.add(a);
+                        ((PlainStreetEdge) e).setNote(notes);
+                    }
+                    else {
+                        notes.add(a);
+                    }
+                    newAlertEdges.add(e);
+                    LOG.trace("Intersects with: " + e.getLabel());
                 }
+            }
+            Iterator<StreetEdge> si = alertEdges.iterator();
+            while (si.hasNext()){
+                StreetEdge e = si.next();
+                removeAlerts(e);
+                si.remove();
+            }
+            alertEdges = newAlertEdges;
+            LOG.info("Added " + newAlertEdges.size() + " edges with notes");
+        }
+
+        private void removeAlerts(StreetEdge e) {
+            Set<Alert> edgeNotes = e.getNotes();
+            Iterator<Alert> ni = edgeNotes.iterator();
+            while (ni.hasNext()){
+                Alert alert = ni.next();
+                if (alert.alertHeaderText.getSomeTranslation().startsWith("winkki"))
+                    ni.remove();
             }
         }
     }
+
+
 }
