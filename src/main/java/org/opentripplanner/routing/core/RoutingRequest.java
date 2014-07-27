@@ -224,13 +224,13 @@ public class RoutingRequest implements Cloneable, Serializable {
      *
      * If we only tried the shortest possible transfer at each stop to neighboring stop patterns, this problem could disappear.
      */
-    public double waitReluctance = 1.0;
+    public double waitReluctance = 0.95;
 
     /** How much less bad is waiting at the beginning of the trip (replaces waitReluctance) */
     public double waitAtBeginningFactor = 0.2;
 
     /** This prevents unnecessary transfers by adding a cost for boarding a vehicle. */
-    protected int walkBoardCost = 60 * 10;
+    protected int walkBoardCost = 60 * 7;
 
     /** Separate cost for boarding a vehicle with a bicycle, which is more difficult than on foot. */
     protected int bikeBoardCost = 60 * 10;
@@ -279,14 +279,14 @@ public class RoutingRequest implements Cloneable, Serializable {
      * transfer timing information in transfers.txt
      */
     // initialize to zero so this does not inadvertently affect tests, and let Planner handle defaults
-    private int transferSlack = 0;
+    private int transferSlack = 150;
 
     /** Invariant: boardSlack + alightSlack <= transferSlack. */
-    private int boardSlack = 0;
+    private int boardSlack = 75;
 
-    private int alightSlack = 0;
+    private int alightSlack = 75;
 
-    public int maxTransfers = 2;
+    public int maxTransfers = 4;
 
     /**
      * Extensions to the trip planner will require additional traversal options beyond the default 
