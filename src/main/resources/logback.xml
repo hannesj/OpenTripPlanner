@@ -11,11 +11,18 @@ depends on otp-routing.
       <pattern>%d{HH:mm:ss.SSS} %level \(%F:%L\) %msg%n</pattern>
     </encoder>
   </appender>
-
-  <root level="debug">
+  <appender name="Sentry" class="net.kencochrane.raven.logback.SentryAppender">
+    <dsn>
+      ${SENTRY}
+    </dsn>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>ERROR</level>
+    </filter>
+  </appender>
+  <root level="info">
     <appender-ref ref="STDOUT" />
+    <appender-ref ref="Sentry" />
   </root>
-  
   <logger name="org.opentripplanner" level="info" />
   <logger name="org.opentripplanner.analyst" level="info" />
   <logger name="org.opentripplanner.routing" level="info" />
@@ -31,5 +38,4 @@ depends on otp-routing.
   <logger name="com.ning.http.client.providers.netty.NettyAsyncHttpProvider" level="error" />
   
   <logger name="com.sun.jersey" level="debug" />
-  
 </configuration>
