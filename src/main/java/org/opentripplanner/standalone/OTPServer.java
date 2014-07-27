@@ -20,6 +20,7 @@ import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.impl.LongDistancePathService;
 import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
+import org.opentripplanner.routing.impl.SimpleAStarPathServiceImpl;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.services.SPTService;
@@ -75,9 +76,9 @@ public class OTPServer {
             pathService.setTimeout(10);
             this.pathService = pathService;
         } else {
-            RetryingPathServiceImpl pathService = new RetryingPathServiceImpl(graphService, sptService);
-            pathService.setFirstPathTimeout(10.0);
-            pathService.setMultiPathTimeout(1.0);
+            SimpleAStarPathServiceImpl pathService = new SimpleAStarPathServiceImpl(graphService, sptService);
+            pathService.setFirstPathTimeout(4.0);
+            pathService.setMultiPathTimeout(0.5);
             this.pathService = pathService;
             // cpf.bind(RemainingWeightHeuristicFactory.class,
             //        new DefaultRemainingWeightHeuristicFactoryImpl());
