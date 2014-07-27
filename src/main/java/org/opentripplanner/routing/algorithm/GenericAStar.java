@@ -57,7 +57,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
     enum RunStatus {
         RUNNING, STOPPED
     }
-    class RunState {
+    public class RunState {
 
         public State u;
         public ShortestPathTree spt;
@@ -67,7 +67,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
         public int nVisited;
         public List<Object> targetAcceptedStates;
         public RunStatus status;
-        private RoutingRequest options;
+        public RoutingRequest options;
         private SearchTerminationStrategy terminationStrategy;
         public Vertex u_vertex;
         Double foundPathWeight = null;
@@ -238,7 +238,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
         return true;
     }
     
-    void runSearch(RunState runState, long abortTime){
+    public void runSearch(RunState runState, long abortTime){
         /* the core of the A* algorithm */
         while (!runState.pq.empty()) { // Until the priority queue is empty:
             /*
@@ -274,7 +274,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
             // Don't search too far past the most recently found accepted path/state
             if (runState.foundPathWeight != null &&
                 runState.u.getWeight() > runState.foundPathWeight * OVERSEARCH_MULTIPLIER ) {
-
+                runState.options.rctx.aborted = true;
                 break;
             }
             if (runState.terminationStrategy != null) {
