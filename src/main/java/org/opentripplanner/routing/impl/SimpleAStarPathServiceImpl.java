@@ -42,6 +42,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
     @Setter
     @Getter
     private GenericAStar sptService;
+
     public SimpleAStarPathServiceImpl(GraphService graphService, GenericAStar sptService) {
         this.graphService = graphService;
         this.sptService = sptService;
@@ -83,25 +84,28 @@ public class SimpleAStarPathServiceImpl implements PathService {
 
         int originalItineraries = options.getNumItineraries();
         options.setNumItineraries(1);
-        GenericAStar.RunState runState = null;
         ShortestPathTree spt;
         long firstPathTimeoutAbsolute = searchBeginTime+(long)(firstPathTimeout*1000.0);
         long multiPathTimeoutAbsolute = searchBeginTime+(long)(multiPathTimeout*1000.0);
 
         while (paths.size() < originalItineraries ) {
             long subsearchBeginTime = System.currentTimeMillis();
-            LOG.info("BEGIN SUBSEARCH at:" + (subsearchBeginTime-searchBeginTime) );
-            if (runState == null){
-                runState = sptService.startSearch (options, null, firstPathTimeoutAbsolute);
-                if (runState == null)
-                    //fail hard
+            LOG.info("BEGIN SUBSEARCH at:" + (subsearchBeginTime-searchBeginTime) + " " + paths.size() );
+            if ( paths.isEmpty() ) {
+                sptService.startSearch(options, null, firstPathTimeoutAbsolute);
+                if (sptService.runState == null) {
+                    LOG.info("Did not get runState");
                     return null;
-            } else
-                runState.options.numItineraries++;
-
+                }
+            }
+            else {
+                LOG.info("Increase numItineraries");
+                sptService.runState.options.numItineraries++;
+            }
             long timeout = paths.isEmpty() ? firstPathTimeoutAbsolute : multiPathTimeoutAbsolute;
-            sptService.runSearch(runState, timeout);
-            spt = runState.spt;
+            LOG.info("Starting search" + sptService.runState.options.numItineraries + " " + (timeout-searchBeginTime));
+            sptService.runSearch(timeout);
+            spt = sptService.runState.spt;
 
             if (spt == null) {
                 // Serious failure, no paths provided. This could be signaled with an exception.
@@ -113,7 +117,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
             LOG.info("END SUBSEARCH ({} msec of {} msec total)",
                     System.currentTimeMillis() - subsearchBeginTime,
                     System.currentTimeMillis() - searchBeginTime);
-            LOG.info("SPT provides {} paths to target. Visited {} nodes", somePaths.size(), runState.nVisited);
+            LOG.info("SPT provides {} paths to target. Visited {} nodes", somePaths.size(), sptService.runState.nVisited);
 
             /* First, accumulate any new paths found into the list of itineraries. */
             for (GraphPath path : somePaths) {
@@ -123,7 +127,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
                 }
             }
             LOG.debug("{} / {} itineraries", paths.size(), options.numItineraries);
-            if (options.rctx.aborted || System.currentTimeMillis() > timeout || paths.size() == 0) {
+            if (options.rctx.aborted || System.currentTimeMillis() > firstPathTimeoutAbsolute || paths.size() == 0) {
                 // search was cleanly aborted, probably due to a timeout. 
                 // There may be useful paths, but we should stop retrying.
                 break;

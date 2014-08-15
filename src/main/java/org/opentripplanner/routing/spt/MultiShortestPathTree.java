@@ -30,8 +30,6 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
 
     private static final long serialVersionUID = MavenVersion.VERSION.getUID();
 
-    public static final ShortestPathTreeFactory FACTORY = new FactoryImpl();
-
     private Map<Vertex, List<State>> stateSets;
 
     public MultiShortestPathTree(RoutingRequest options) {
@@ -51,12 +49,17 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
     public boolean add(State newState) {
         Vertex vertex = newState.getVertex();
         List<State> states = stateSets.get(vertex);
+        
+        // if the vertex has no states, add one and return
         if (states == null) {
             states = new ArrayList<State>();
             stateSets.put(vertex, states);
             states.add(newState);
             return true;
         }
+        
+        // if the vertex has any states that dominate the new state, don't add the state
+        // if the new state dominates any old states, remove them
         Iterator<State> it = states.iterator();
         while (it.hasNext()) {
             State oldState = it.next();
@@ -67,6 +70,8 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
             if (newState.dominates(oldState))
                 it.remove();
         }
+        
+        // any states remaining are codominent with the new state
         states.add(newState);
         return true;
     }
@@ -122,13 +127,6 @@ public class MultiShortestPathTree extends AbstractShortestPathTree {
 
     public String toString() {
         return "MultiSPT(" + this.stateSets.size() + " vertices)";
-    }
-
-    private static final class FactoryImpl implements ShortestPathTreeFactory {
-        @Override
-        public ShortestPathTree create(RoutingRequest options) {
-            return new MultiShortestPathTree(options);
-        }
     }
 
     @Override

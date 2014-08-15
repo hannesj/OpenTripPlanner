@@ -23,11 +23,10 @@ import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.HashGrid;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.common.model.P2;
-import org.opentripplanner.index.model.PatternShort;
 import org.opentripplanner.index.model.StopTimesInPattern;
 import org.opentripplanner.index.model.TripTimeShort;
 import org.opentripplanner.profile.ProfileTransfer;
-import org.opentripplanner.profile.StopAtDistance;
+import org.opentripplanner.profile.StopCluster;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.ServiceDay;
 import org.opentripplanner.routing.core.State;
@@ -67,6 +66,7 @@ public class GraphIndex {
     public final Multimap<Stop, TripPattern> patternsForStop = ArrayListMultimap.create();
     public final Multimap<String, Stop> stopsForParentStation = ArrayListMultimap.create();
     public final HashGrid<TransitStop> stopSpatialIndex = new HashGrid<TransitStop>();
+    public final Map<String, StopCluster> stopClusterForId = Maps.newHashMap();
 
     /* Should eventually be replaced with new serviceId indexes. */
     private final CalendarService calendarService;
@@ -130,6 +130,10 @@ public class GraphIndex {
         for (Route route : patternsForRoute.asMap().keySet()) {
             routeForId.put(route.getId(), route);
         }
+        // FIXME This will overwrite any parent station information
+        for (StopCluster cluster : StopCluster.clusterStops(this)) {
+            stopClusterForId.put(cluster.id, cluster);
+        }
         // Copy these two service indexes from the graph until we have better ones.
         calendarService = graph.getCalendarService();
         serviceCodes = graph.serviceCodes;
@@ -158,15 +162,14 @@ public class GraphIndex {
         LOG.info("Finding transfers...");
         for (Stop s0 : stopForId.values()) {
             Collection<TripPattern> ps0 = patternsForStop.get(s0);
-            for (StopAtDistance sd : findTransitStops(s0.getLon(), s0.getLat(), TRANSFER_RADIUS)) {
-                Stop s1 = sd.stop;
+            Map<Stop, Double> stops = findTransitStops(s0.getLon(), s0.getLat(), TRANSFER_RADIUS);
+            for (Stop s1 : stops.keySet()) {
+                double distance = stops.get(s1);
                 Collection<TripPattern> ps1 = patternsForStop.get(s1);
                 for (TripPattern p0 : ps0) {
                     for (TripPattern p1 : ps1) {
-                        if (p0 == p1)
-                            continue;
-                        bestTransfers.putMin(new P2<TripPattern>(p0, p1), new ProfileTransfer(p0, p1,
-                                s0, s1, sd.distance));
+                        if (p0 == p1) continue;
+                        bestTransfers.putMin(new P2<TripPattern>(p0, p1), new ProfileTransfer(p0, p1, s0, s1, (int)distance));
                     }
                 }
             }
@@ -182,17 +185,14 @@ public class GraphIndex {
         LOG.info("Done finding transfers.");
     }
 
-    /**
-     * For profile routing. Actually, now only used for finding transfers.
-     * TODO replace with an on-street search.
-     */
-    public List<StopAtDistance> findTransitStops(double lon, double lat, double radius) {
-        List<StopAtDistance> ret = Lists.newArrayList();
+    /** Find transfers for profile routing. TODO replace with an on-street search using the existing profile router functions. */
+    public Map<Stop, Double> findTransitStops(double lon, double lat, double radius) {
+        Map<Stop, Double> ret = Maps.newHashMap();
         for (TransitStop tstop : stopSpatialIndex.query(lon, lat, radius)) {
             Stop stop = tstop.getStop();
-            int distance = (int) distlib.distance(lat, lon, stop.getLat(), stop.getLon());
+            double distance = distlib.distance(lat, lon, stop.getLat(), stop.getLon());
             if (distance < radius)
-                ret.add(new StopAtDistance(stop, distance));
+                ret.put(stop, distance);
         }
         return ret;
     }

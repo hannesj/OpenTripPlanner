@@ -34,6 +34,7 @@ import org.opentripplanner.common.geometry.DirectionUtils;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.PackedCoordinateSequence;
 import org.opentripplanner.common.model.P2;
+import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.alertpatch.AlertPatch;
 import org.opentripplanner.routing.core.RoutingContext;
@@ -214,7 +215,7 @@ public class PlanGenerator {
      * @param showIntermediateStops Whether to include intermediate stops in the itinerary or not
      * @return The generated itinerary
      */
-    Itinerary generateItinerary(GraphPath path, boolean showIntermediateStops) {
+    public Itinerary generateItinerary(GraphPath path, boolean showIntermediateStops) {
         if (path.states.size() < 2) {
             throw new TrivialPathException();
         }
@@ -726,7 +727,7 @@ public class PlanGenerator {
             place.platformCode = stop.getPlatformCode();
             place.zoneId = stop.getZoneId();
             place.stopIndex = ((OnboardEdge) edge).getStopIndex();
-            OffboardVertex offboardVertex = (OffboardVertex) graphService.getGraph().getVertex(place.stopId.toString());
+            OffboardVertex offboardVertex = (OffboardVertex) graphService.getGraph().getVertex(GtfsLibrary.convertIdToString(place.stopId));
             place.accessibilityInformation = offboardVertex.getAccessibilityInformation();
             if (endOfLeg) place.stopIndex++;
             if (tripTimes != null) {
