@@ -76,7 +76,7 @@ public class OTPServer {
             pathService.setTimeout(10);
             this.pathService = pathService;
         } else {
-            SimpleAStarPathServiceImpl pathService = new SimpleAStarPathServiceImpl(graphService, sptService);
+            SimpleAStarPathServiceImpl pathService = new SimpleAStarPathServiceImpl(graphService, (GenericAStar)sptService);
             pathService.setFirstPathTimeout(4.0);
             pathService.setMultiPathTimeout(0.5);
             this.pathService = pathService;
