@@ -34,7 +34,7 @@ import java.util.prefs.Preferences;
 public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
 
     private static Logger LOG = LoggerFactory.getLogger(WinkkiPollingGraphUpdater.class);
-    private static final double SEARCH_RADIUS_M = 30; // meters
+    private static final double SEARCH_RADIUS_M = 1; // meters
     private static final double SEARCH_RADIUS_DEG = SphericalDistanceLibrary.metersToDegrees(SEARCH_RADIUS_M);
 
     private GraphUpdaterManager updaterManager;
