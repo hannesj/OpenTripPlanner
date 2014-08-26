@@ -1139,7 +1139,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         private void addtoVisibilityAndStartSets(Set<OSMNode> startingNodes,
                                                  ArrayList<VLPoint> visibilityPoints, ArrayList<OSMNode> visibilityNodes,
                                                  OSMNode node) {
-            if (_nodesWithNeighbors.contains(node.getId()) || multipleAreasContain(node.getId())) {
+            if (_nodesWithNeighbors.contains(node.getId()) || multipleAreasContain(node.getId()) || nodeIsStop(node)) {
 
                 startingNodes.add(node);
                 VLPoint point = new VLPoint(node.getLon(), node.getLat());
@@ -1363,8 +1363,20 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         visibilityPoints.add(cur);
                         visibilityNodes.add(curNode);
                     }
+                } else if ( nodeIsStop(curNode)){
+                    visibilityPoints.add(cur);
+                    visibilityNodes.add(curNode);
+                    LOG.warn("Addin OSM Node " + curNode.toString());
                 }
             }
+        }
+
+        boolean nodeIsStop(OSMNode curNode) {
+            return "bus_stop".equals(curNode.getTag("highway"))
+            || "tram_stop".equals(curNode.getTag("railway"))
+            || "station".equals(curNode.getTag("railway"))
+            || "halt".equals(curNode.getTag("railway"))
+            || "bus_station".equals(curNode.getTag("amenity"));
         }
 
         private VLPolygon makeStandardizedVLPolygon(List<VLPoint> vertices, List<OSMNode> nodes,
@@ -1630,11 +1642,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     if (intersectionNodes.containsKey(endNode) || i == nodes.size() - 2
                             || nodes.subList(0, i).contains(nodes.get(i))
                             || osmEndNode.hasTag("ele")
-                            || "bus_stop".equals(osmEndNode.getTag("highway"))
-                            || "tram_stop".equals(osmEndNode.getTag("railway"))
-                            || "station".equals(osmEndNode.getTag("railway"))
-                            || "halt".equals(osmEndNode.getTag("railway"))
-                            || "bus_station".equals(osmEndNode.getTag("amenity"))) {
+                            || nodeIsStop(osmEndNode)) {
                         segmentCoordinates.add(getCoordinate(osmEndNode));
 
                         geometry = GeometryUtils.getGeometryFactory().createLineString(
@@ -2786,11 +2794,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
 
-                if ("bus_stop".equals(node.getTag("highway"))
-                        || "tram_stop".equals(node.getTag("railway"))
-                        || "station".equals(node.getTag("railway"))
-                        || "halt".equals(node.getTag("railway"))
-                        || "bus_station".equals(node.getTag("amenity"))) {
+                if (nodeIsStop(node)) {
                     String ref = node.getTag("ref");
                     String name = node.getTag("name");
                     if (ref != null) {
