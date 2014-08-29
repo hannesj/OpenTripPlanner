@@ -6,7 +6,6 @@ import java.util.List;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
-import org.jvnet.hk2.component.MultiMap;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
 import org.opentripplanner.routing.core.RoutingRequest;
@@ -38,8 +37,8 @@ public class Ride {
 
     /* Here we store stop objects rather than indexes. The start and end indexes in the Ride's 
      * constituent PatternRides should correspond to these same stops. */
-    final Stop from;
-    final Stop to;
+    final StopCluster from;
+    final StopCluster to;
     final Ride previous;
     final List<PatternRide> patternRides = Lists.newArrayList();
     Stats rideStats; // filled in only once the ride is complete (has all PatternRides).
@@ -47,14 +46,14 @@ public class Ride {
     int accessTime;  // minimum time to reach this ride from the previous one, or from the origin point on the first ride
     int accessDist;  // meters from the previous ride, or from the origin point on the first ride
 
-    public Ride (Stop from, Ride previous) {
+    public Ride (StopCluster from, Ride previous) {
         this.from = from;
         this.to = null; // this is a "partial ride" waiting to be completed.
         this.previous = previous;
     }
 
-    /** Construct a partial copy with no PatternRides or Stats and the given to-Stop. */
-    public Ride (Ride other, Stop to) {
+    /** Construct a partial copy with no PatternRides or Stats and the given arrival StopCluster. */
+    public Ride (Ride other, StopCluster to) {
         this.from = other.from;
         this.to = to;
         this.previous = other.previous;
@@ -63,8 +62,8 @@ public class Ride {
     }
 
     /** Extend this incomplete ride to the given stop, creating a container for PatternRides. */
-    public Ride extendTo(Stop toStop) {
-        return new Ride(this, toStop);
+    public Ride extendTo(StopCluster toStopCluster) {
+        return new Ride(this, toStopCluster);
     }
 
     public String toString() {
@@ -123,10 +122,11 @@ public class Ride {
         return false;
     }
 
-    public boolean pathContainsStop(Stop stop) {
+    // TODO rename _cluster_
+    public boolean pathContainsStop(StopCluster stopCluster) {
         Ride ride = this;
         while (ride != null) {
-            if (ride.from == stop || ride.to == stop) return true;
+            if (ride.from == stopCluster || ride.to == stopCluster) return true;
             ride = ride.previous;
         }
         return false;
@@ -177,12 +177,13 @@ public class Ride {
     /**
      * @param arrivals find arrival times rather than departure times for this Ride.
      * @return a list of sorted departure or arrival times within the window.
+     * FIXME this is a hot spot in execution, about 50 percent of runtime.
      */
     public List<Integer> getSortedStoptimes (TimeWindow window, boolean arrivals) {
         // Using Lists because we don't know the length in advance
         List<Integer> times = Lists.newArrayList();
         for (PatternRide patternRide : patternRides) {
-            for (TripTimes tt : patternRide.pattern.getScheduledTimetable().getTripTimes()) {
+            for (TripTimes tt : patternRide.pattern.scheduledTimetable.tripTimes) {
                 if (window.servicesRunning.get(tt.serviceCode)) {
                     int t = arrivals ? tt.getArrivalTime(patternRide.toIndex)
                                      : tt.getDepartureTime(patternRide.fromIndex);
@@ -248,7 +249,7 @@ public class Ride {
     }
 
     /**  @return the stop at which the rider would board the chain of Rides this Ride belongs to. */
-    public Stop getAccessStop() {
+    public StopCluster getAccessStopCluster() {
         Ride ride = this;
         while (ride.previous != null) {
             ride = ride.previous;
@@ -258,7 +259,7 @@ public class Ride {
 
 
     /** @return the stop from which the rider will walk to the final destination, assuming this is the final Ride in a chain. */
-    public Stop getEgressStop() {
+    public StopCluster getEgressStopCluster() {
         return this.to;
     }
 

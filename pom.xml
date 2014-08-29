@@ -359,7 +359,7 @@
         <dependency>
             <groupId>org.mapdb</groupId>
             <artifactId>mapdb</artifactId>
-            <version>0.9.10</version>
+            <version>1.0.6</version>
         </dependency>
 
         <!-- Logging library -->
@@ -373,12 +373,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>jul-to-slf4j</artifactId>
             <version>1.7.6</version>
-        </dependency>
-        <!-- Lombok provides annotation-driven field accessor methods. -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.12.6</version>
         </dependency>
         <!-- Guava provides improved collections, among other things. -->
         <dependency>

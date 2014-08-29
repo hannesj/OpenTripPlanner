@@ -7,6 +7,8 @@ import org.opentripplanner.api.model.WalkStep;
 import org.opentripplanner.index.model.RouteShort;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -15,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 public class Option {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Option.class);
 
     public List<Segment> transit;
     public List<StreetSegment> access;
@@ -29,7 +33,7 @@ public class Option {
         access = StreetSegment.list(accessPaths);
         egress = StreetSegment.list(egressPaths);
         // FIXME In the event that there is only access, N will still be 1 which is strange.
-        stats.add(access);
+        stats.add(access); // FIXME double-adding access time here, it's already in the path.
         stats.add(egress);
         List<Ride> rides = Lists.newArrayList();
         for (Ride ride = tail; ride != null; ride = ride.previous) rides.add(ride);
@@ -54,19 +58,20 @@ public class Option {
         if (transit == null || transit.isEmpty()) {
             return "Non-transit options";
         }
-        StringBuilder sb = new StringBuilder();
-        sb.append("routes ");
         List<String> vias = Lists.newArrayList();
+        List<String> routes = Lists.newArrayList();
         for (Segment segment : transit) {
             List<String> routeShortNames = Lists.newArrayList();
             for (RouteShort rs : segment.routes) {
                 String routeName = rs.shortName == null ? rs.longName : rs.shortName;
                 routeShortNames.add(routeName);
             }
-            sb.append(Joiner.on("/").join(routeShortNames));
-            sb.append(", ");
+            routes.add(Joiner.on("/").join(routeShortNames));
             vias.add(segment.toName);
         }
+        StringBuilder sb = new StringBuilder();
+        sb.append("routes ");
+        sb.append(Joiner.on(", ").join(routes));
         if (!vias.isEmpty()) vias.remove(vias.size() - 1);
         if (!vias.isEmpty()) {
             sb.append(" via ");

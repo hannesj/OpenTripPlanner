@@ -107,7 +107,7 @@ public class PlanGenerator {
         boolean tooSloped = false;
         try {
             paths = pathService.getPaths(options);
-            if (paths == null && options.isWheelchairAccessible()) {
+            if (paths == null && options.wheelchairAccessible) {
                 // There are no paths that meet the user's slope restrictions.
                 // Try again without slope restrictions (and warn user).
                 options.maxSlope = Double.MAX_VALUE;
@@ -116,18 +116,18 @@ public class PlanGenerator {
                 tooSloped = true;
             }
         } catch (VertexNotFoundException e) {
-            LOG.info("Vertex not found: " + options.getFrom() + " : " + options.getTo(), e);
+            LOG.info("Vertex not found: " + options.from + " : " + options.to, e);
             throw e;
         }
         options.rctx.debugOutput.finishedCalculating();
 
         if (paths == null || paths.size() == 0) {
-            LOG.info("Path not found: " + options.getFrom() + " : " + options.getTo());
+            LOG.info("Path not found: " + options.from + " : " + options.to);
             throw new PathNotFoundException();
         }
 
         for (GraphPath graphPath : paths) {
-            if (originalOptions.isArriveBy()) {
+            if (originalOptions.arriveBy) {
                 if (graphPath.states.getLast().getTimeSeconds() > originalOptions.dateTime) {
                     LOG.error("A graph path arrives after the requested time. This implies a bug.");
                 }
@@ -178,13 +178,13 @@ public class PlanGenerator {
         Place from = new Place(tripStartVertex.getX(), tripStartVertex.getY(), startName);
         Place to = new Place(tripEndVertex.getX(), tripEndVertex.getY(), endName);
 
-        from.orig = request.getFrom().getName();
-        to.orig = request.getTo().getName();
+        from.orig = request.from.name;
+        to.orig = request.to.name;
 
         TripPlan plan = new TripPlan(from, to, request.getDateTime());
 
         for (GraphPath path : paths) {
-            Itinerary itinerary = generateItinerary(path, request.isShowIntermediateStops());
+            Itinerary itinerary = generateItinerary(path, request.showIntermediateStops);
             itinerary = adjustItinerary(request, itinerary);
             plan.addItinerary(itinerary);
         }
@@ -1090,7 +1090,7 @@ public class PlanGenerator {
     /** Returns the first trip of the service day. Currently unused.
      * TODO This should probably be done with a special time value. */
     public TripPlan generateFirstTrip(RoutingRequest request) {
-        Graph graph = graphService.getGraph(request.getRouterId());
+        Graph graph = graphService.getGraph(request.routerId);
 
         request.setArriveBy(false);
 
@@ -1110,7 +1110,7 @@ public class PlanGenerator {
     /** Return the last trip of the service day. Currently unused.
      * TODO This should probably be done with a special time value. */
     public TripPlan generateLastTrip(RoutingRequest request) {
-        Graph graph = graphService.getGraph(request.getRouterId());
+        Graph graph = graphService.getGraph(request.routerId);
 
         request.setArriveBy(true);
 

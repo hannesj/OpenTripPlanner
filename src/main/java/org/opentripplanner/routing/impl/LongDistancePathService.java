@@ -23,8 +23,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import lombok.Setter;
-
 import org.opentripplanner.routing.algorithm.strategies.DefaultRemainingWeightHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.InterleavedBidirectionalHeuristic;
 import org.opentripplanner.routing.algorithm.strategies.PoiClassTerminationStrategy;
@@ -76,8 +74,7 @@ public class LongDistancePathService implements PathService {
         this.sptService = sptService;
     }
 
-    @Setter
-    private double timeout = 0; // seconds
+    public double timeout = 0; // seconds
     
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {
@@ -92,14 +89,14 @@ public class LongDistancePathService implements PathService {
         }
 
         if (options.rctx == null) {
-            options.setRoutingContext(graphService.getGraph(options.getRouterId()));
+            options.setRoutingContext(graphService.getGraph(options.routerId));
             options.rctx.pathParsers = new PathParser[] { new Parser() };
         }
 
         LOG.debug("rreq={}", options);
 
         RemainingWeightHeuristic heuristic;
-        if (options.isDisableRemainingWeightHeuristic() || options.isOneToMany()) {
+        if (options.disableRemainingWeightHeuristic || options.oneToMany) {
             heuristic = new TrivialRemainingWeightHeuristic();
         } else if (options.modes.isTransit()) {
             // Only use the BiDi heuristic for transit.
