@@ -312,6 +312,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
         private Multimap<Long, TurnRestrictionTag> turnRestrictionsByToWay = ArrayListMultimap.create();
 
+        private Map<OSMWay, Set<OSMNode>> stopsInAreas = new HashMap<OSMWay, Set<OSMNode>>();
+
         class Ring {
             public List<OSMNode> nodes;
 
@@ -474,6 +476,22 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         }
                     }
                 }
+
+                for (OSMWay way : outerRingWays) {
+                    if (stopsInAreas.containsKey(way)) {
+                        Set<OSMNode> nodes = stopsInAreas.get(way);
+                        for (OSMNode node: nodes){
+                            List<Long> ring = new ArrayList<Long>();
+                            Ring rring = new Ring(ring);
+                            ring.add(node.getId());
+                            allRings.add(ring);
+                            outerRings.add(rring);
+                            outermostRings.add(rring);
+                        }
+
+                    }
+                }
+
                 // run this at end of ctor so that exception
                 // can be caught in the right place
                 toJTSMultiPolygon();
@@ -2071,7 +2089,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             } else if (!(relation.isTag("type", "restriction"))
                     && !(relation.isTag("type", "route") && relation.isTag("route", "road"))
                     && !(relation.isTag("type", "multipolygon") && isOsmEntityRoutable(relation))
-                    && !(relation.isTag("type", "level_map"))) {
+                    && !(relation.isTag("type", "level_map"))
+                    && !(relation.isTag("type", "public_transport") && relation.isTag("public_transport", "stop_area"))) {
                 return;
             }
 
@@ -2265,6 +2284,8 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     processLevelMap(relation);
                 } else if (relation.isTag("type", "route")) {
                     processRoad(relation);
+                } else if (relation.isTag("type", "public_transport")) {
+                    processPublicTransportStopArea(relation);
                 }
 
                 // multipolygons will be further processed in secondPhase()
@@ -2410,6 +2431,31 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
+        }
+
+        /**
+         * Process an OSM public transport stop.
+         *
+         * @param relation
+         */
+        private void processPublicTransportStopArea(OSMRelation relation) {
+            OSMWay platformArea = null;
+            Set<OSMNode> platformsNodes = new HashSet<>();
+            for (OSMRelationMember member : relation.getMembers()) {
+                if ("platform".equals(member.getRole()) && "way".equals(member.getType()) && _ways.containsKey(member.getRef())) {
+                    if (platformArea == null)
+                        platformArea = _ways.get(member.getRef());
+                    else
+                        LOG.warn("Too many areas in relation " + relation.getId());
+                } else if ("platform".equals(member.getRole()) && "node".equals(member.getType()) && _nodes.containsKey(member.getRef())) {
+                    platformsNodes.add(_nodes.get(member.getRef()));
+                } else
+                    LOG.warn("Unable to properly process public transportation relation " + relation.toString());
+            }
+            if (platformArea != null && !platformsNodes.isEmpty())
+                stopsInAreas.put(platformArea, platformsNodes);
+            else
+                LOG.warn("Unable to process public transportation relation " + relation.getId());
         }
 
         private String addUniqueName(String routes, String name) {
