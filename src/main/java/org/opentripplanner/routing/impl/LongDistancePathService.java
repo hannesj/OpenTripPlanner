@@ -84,8 +84,8 @@ public class LongDistancePathService implements PathService {
             return null;
         }
 
-        if (options.to.getPlace().startsWith("poi:category:")){
-            options.setOneToMany(true);
+        if (options.to.place.startsWith("poi:category:")){
+            options.oneToMany = true;
         }
 
         if (options.rctx == null) {
@@ -114,8 +114,8 @@ public class LongDistancePathService implements PathService {
         long searchBeginTime = System.currentTimeMillis();
         LOG.debug("BEGIN SEARCH");
         SearchTerminationStrategy strategy = null;
-        if (options.isOneToMany()){
-            strategy = new PoiClassTerminationStrategy(options.to.getPlace(), options.getNumItineraries());
+        if (options.oneToMany){
+            strategy = new PoiClassTerminationStrategy(options.to.place, options.getNumItineraries());
         }
         ShortestPathTree spt = sptService.getShortestPathTree(options, timeout, strategy);
         LOG.debug("END SEARCH ({} msec)", System.currentTimeMillis() - searchBeginTime);
@@ -126,9 +126,9 @@ public class LongDistancePathService implements PathService {
         }
         //spt.getPaths().get(0).dump();
         List<GraphPath> paths;
-        if (options.isOneToMany()){
+        if (options.oneToMany){
             paths = new LinkedList<>();
-            for(Vertex v : ((PoiClassTerminationStrategy)strategy).getFoundVertices()){
+            for(Vertex v : ((PoiClassTerminationStrategy)strategy).foundVertices){
                 paths.add(spt.getPath(v, true));
             }
         } else {

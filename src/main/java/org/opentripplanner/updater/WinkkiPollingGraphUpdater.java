@@ -58,7 +58,7 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
         typeName = preferences.get("typeName", "hkr:winkki_works");
 
         LOG.info("Configured Winkki polling updater: frequencySec={} and url={}",
-                getFrequencySec(), url);
+                frequencySec, url);
     }
 
     // Here the updater gets to know its parent manager to execute GraphWriterRunnables.

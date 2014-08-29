@@ -113,7 +113,7 @@ public class JOREAccessibilityGraphBuilderImpl implements GraphBuilder{
                     LOG.warn("Could not find stop HSL_" + stopId );
                     continue;
                 }
-                ((TransitStop) stop).setAccessibilityInformation(accessibilityInformation);
+                ((TransitStop) stop).accessibilityInformation = accessibilityInformation;
             }
         } catch (IOException e){
             e.printStackTrace();

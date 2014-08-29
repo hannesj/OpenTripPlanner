@@ -1,7 +1,5 @@
 package org.opentripplanner.graph_builder.impl;
 
-
-import lombok.Setter;
 import org.apache.http.client.ClientProtocolException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -32,18 +30,16 @@ public class ServiceMapAccessibilityGraphBuilderImpl implements GraphBuilder {
 
     public static final String POI_PREFIX = "poi:tprek:";
 
-    @Setter
     private File path;
 
-    @Setter
     private URL url;
 
     public ServiceMapAccessibilityGraphBuilderImpl(File path) {
-        this.setPath(path);
+        this.path = path;
     }
 
     public ServiceMapAccessibilityGraphBuilderImpl(URL url) {
-        this.setUrl(url);
+        this.url = url;
     }
 
     @Override
@@ -138,4 +134,6 @@ public class ServiceMapAccessibilityGraphBuilderImpl implements GraphBuilder {
             }
         }
     }
+
+
 }

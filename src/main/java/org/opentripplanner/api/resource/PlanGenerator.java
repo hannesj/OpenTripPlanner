@@ -728,13 +728,13 @@ public class PlanGenerator {
             place.zoneId = stop.getZoneId();
             place.stopIndex = ((OnboardEdge) edge).getStopIndex();
             OffboardVertex offboardVertex = (OffboardVertex) graphService.getGraph().getVertex(GtfsLibrary.convertIdToString(place.stopId));
-            place.accessibilityInformation = offboardVertex.getAccessibilityInformation();
+            place.accessibilityInformation = offboardVertex.accessibilityInformation;
             if (endOfLeg) place.stopIndex++;
             if (tripTimes != null) {
                 place.stopSequence = tripTimes.getStopSequence(place.stopIndex);
             }
         }  else if (vertex instanceof PoiVertex){
-            place.accessibilityInformation = ((PoiVertex) vertex).getAccessibilityViewpoints();
+            place.accessibilityInformation = ((PoiVertex) vertex).accessibilityViewpoints;
         }
 
         return place;

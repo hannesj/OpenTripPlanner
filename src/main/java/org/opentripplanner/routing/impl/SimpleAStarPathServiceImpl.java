@@ -13,8 +13,6 @@
 
 package org.opentripplanner.routing.impl;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.pathparser.BasicPathParser;
@@ -35,12 +33,8 @@ public class SimpleAStarPathServiceImpl implements PathService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimpleAStarPathServiceImpl.class);
 
-    @Setter
-    @Getter
     private GraphService graphService;
 
-    @Setter
-    @Getter
     private GenericAStar sptService;
 
     public SimpleAStarPathServiceImpl(GraphService graphService, GenericAStar sptService) {
@@ -52,8 +46,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
      * Give up on searching for the first itinerary after this many seconds have elapsed.
      * A negative or zero value means search forever.
      */
-    @Setter
-    private double firstPathTimeout = 0; // seconds
+    public double firstPathTimeout = 0; // seconds
 
     /**
      * Stop searching for additional itineraries (beyond the first one) after this many seconds
@@ -63,8 +56,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
      * itineraries when finding the first itinerary takes a long time. This helps keep overall
      * response time down while assuring that the end user will get at least one response.
      */
-    @Setter
-    private double multiPathTimeout = 0; // seconds
+    public double multiPathTimeout = 0; // seconds
 
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {
@@ -74,7 +66,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
         // make sure the options has a routing context *before* cloning it (otherwise you get
         // orphan RoutingContexts leaving temporary edges in the graph until GC)
         if (options.rctx == null) {
-            options.setRoutingContext(graphService.getGraph(options.getRouterId()));
+            options.setRoutingContext(graphService.getGraph(options.routerId));
             options.rctx.pathParsers = new PathParser[] { new BasicPathParser(),
                     new NoThruTrafficPathParser() };
         }
@@ -137,7 +129,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
             return null;
         }
         // We order the list of returned paths by the time of arrival or departure (not path duration)
-        Collections.sort(paths, new PathComparator(options.isArriveBy()));
+        Collections.sort(paths, new PathComparator(options.arriveBy));
         return paths;
     }
 }

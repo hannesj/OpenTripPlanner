@@ -13,11 +13,8 @@
 
 package org.opentripplanner.graph_builder.annotation;
 
-import lombok.AllArgsConstructor;
-
 import org.opentripplanner.routing.vertextype.PoiVertex;
 
-@AllArgsConstructor
 public class PoiUnlinked extends GraphBuilderAnnotation {
 
     public static final String FMT = "Point of Interest %s not near any streets; it will not be usable.";
@@ -25,6 +22,10 @@ public class PoiUnlinked extends GraphBuilderAnnotation {
     private static final long serialVersionUID = 1L;
 
     final PoiVertex poi;
+
+    public PoiUnlinked(PoiVertex poi) {
+        this.poi = poi;
+    }
 
     @Override
     public String getMessage() {

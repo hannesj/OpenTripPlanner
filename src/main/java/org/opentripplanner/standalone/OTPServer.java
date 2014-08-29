@@ -77,8 +77,8 @@ public class OTPServer {
             this.pathService = pathService;
         } else {
             SimpleAStarPathServiceImpl pathService = new SimpleAStarPathServiceImpl(graphService, (GenericAStar)sptService);
-            pathService.setFirstPathTimeout(4.0);
-            pathService.setMultiPathTimeout(0.5);
+            pathService.firstPathTimeout = 4.0;
+            pathService.multiPathTimeout = 0.5;
             this.pathService = pathService;
             // cpf.bind(RemainingWeightHeuristicFactory.class,
             //        new DefaultRemainingWeightHeuristicFactoryImpl());

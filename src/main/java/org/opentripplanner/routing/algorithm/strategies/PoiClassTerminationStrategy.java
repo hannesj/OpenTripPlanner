@@ -1,6 +1,5 @@
 package org.opentripplanner.routing.algorithm.strategies;
 
-import lombok.Getter;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.graph.Vertex;
@@ -16,8 +15,7 @@ public class PoiClassTerminationStrategy implements SearchTerminationStrategy{
 
     private final String category;
 
-    @Getter
-    private List<Vertex> foundVertices = new LinkedList<>();
+    public List<Vertex> foundVertices = new LinkedList<>();
 
     public PoiClassTerminationStrategy(String category, int numItineraries){
         this.category = category;
@@ -33,7 +31,7 @@ public class PoiClassTerminationStrategy implements SearchTerminationStrategy{
     public boolean shouldSearchContinue(Vertex origin, Vertex target, State current, ShortestPathTree spt, RoutingRequest traverseOptions) {
         Vertex currentVertex = current.getVertex();
         if (currentVertex instanceof PoiVertex){
-            if (((PoiVertex) currentVertex).getCategories().contains(category)){
+            if (((PoiVertex) currentVertex).categories.contains(category)){
                 if (!foundVertices.contains(currentVertex)) {
                     foundVertices.add(currentVertex);
                     if (foundVertices.size() >= numItineraries){

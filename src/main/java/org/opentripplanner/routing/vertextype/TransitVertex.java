@@ -13,8 +13,6 @@
 
 package org.opentripplanner.routing.vertextype;
 
-import lombok.Getter;
-import lombok.Setter;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.opentripplanner.routing.graph.Graph;
@@ -29,9 +27,7 @@ public abstract class TransitVertex extends Vertex {
 
     private final Stop stop;
 
-    @Getter
-    @Setter
-    private Map<String, String> accessibilityInformation = null;
+    public Map<String, String> accessibilityInformation = null;
 
     public TransitVertex(Graph graph, String label, Stop stop) {
         super(graph, label, stop.getLon(), stop.getLat(), stop.getName());

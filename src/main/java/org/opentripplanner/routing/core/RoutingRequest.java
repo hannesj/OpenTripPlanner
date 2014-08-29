@@ -222,7 +222,7 @@ public class RoutingRequest implements Cloneable, Serializable {
     public double waitAtBeginningFactor = 0.2;
 
     /** This prevents unnecessary transfers by adding a cost for boarding a vehicle. */
-    protected int walkBoardCost = 60 * 7;
+    public int walkBoardCost = 60 * 7;
 
     /** Separate cost for boarding a vehicle with a bicycle, which is more difficult than on foot. */
     public int bikeBoardCost = 60 * 10;
@@ -271,12 +271,12 @@ public class RoutingRequest implements Cloneable, Serializable {
      * transfer timing information in transfers.txt
      */
     // initialize to zero so this does not inadvertently affect tests, and let Planner handle defaults
-    private int transferSlack = 150;
+    public int transferSlack = 150;
 
     /** Invariant: boardSlack + alightSlack <= transferSlack. */
-    private int boardSlack = 75;
+    public int boardSlack = 75;
 
-    private int alightSlack = 75;
+    public int alightSlack = 75;
 
     public int maxTransfers = 4;
 
