@@ -303,7 +303,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
         private Multimap<Long, TurnRestrictionTag> turnRestrictionsByToWay = ArrayListMultimap.create();
 
-        private Map<OSMWay, Set<OSMNode>> stopsInAreas = new HashMap<OSMWay, Set<OSMNode>>();
+        private Map<OSMWithTags, Set<OSMNode>> stopsInAreas = new HashMap<OSMWithTags, Set<OSMNode>>();
 
         class Ring {
             public List<OSMNode> nodes;
@@ -465,21 +465,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         if (possibleHole.geometry.hasPointInside(outer.geometry)) {
                             outer.holes.add(possibleHole);
                         }
-                    }
-                }
-
-                for (OSMWay way : outerRingWays) {
-                    if (stopsInAreas.containsKey(way)) {
-                        Set<OSMNode> nodes = stopsInAreas.get(way);
-                        for (OSMNode node: nodes){
-                            List<Long> ring = new ArrayList<Long>();
-                            Ring rring = new Ring(ring);
-                            ring.add(node.getId());
-                            allRings.add(ring);
-                            outerRings.add(rring);
-                            outermostRings.add(rring);
-                        }
-
                     }
                 }
 
@@ -960,6 +945,13 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         continue;
                     }
 
+                    if (stopsInAreas.containsKey(area.parent)){
+                        for(OSMNode node :stopsInAreas.get(area.parent)){
+                            addtoVisibilityAndStartSets(startingNodes, visibilityPoints,
+                                    visibilityNodes, node);
+                        }
+                    }
+
                     for (Ring outerRing : area.outermostRings) {
                         for (int i = 0; i < outerRing.nodes.size(); ++i) {
                             OSMNode node = outerRing.nodes.get(i);
@@ -1372,10 +1364,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         visibilityPoints.add(cur);
                         visibilityNodes.add(curNode);
                     }
-                } else if ( nodeIsStop(curNode)){
-                    visibilityPoints.add(cur);
-                    visibilityNodes.add(curNode);
-                    LOG.warn("Addin OSM Node " + curNode.toString());
                 }
             }
         }
@@ -1889,6 +1877,19 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
+            // Intersect ways at walkable area boundaries if needed.
+            for (Area area : _walkableAreas) {
+                for (Ring outerRing : area.outermostRings) {
+                    for (OSMNode node : outerRing.nodes) {
+                        long nodeId = node.getId();
+                        if (possibleIntersectionNodes.contains(nodeId)) {
+                            intersectionNodes.put(nodeId, null);
+                        } else {
+                            possibleIntersectionNodes.add(nodeId);
+                        }
+                    }
+                }
+            }
             // Intersect ways at P+R area boundaries if needed.
             for (Area area : _parkAndRideAreas) {
                 for (Ring outerRing : area.outermostRings) {
@@ -1984,7 +1985,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 _bikeRentalNodes.add(node);
                 return;
             }
-            if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId())))
+            if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId()) || nodeIsStop(node)))
                 return;
 
             if (_nodes.containsKey(node.getId()))
@@ -2431,18 +2432,22 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
          * @param relation
          */
         private void processPublicTransportStopArea(OSMRelation relation) {
-            OSMWay platformArea = null;
+            OSMWithTags platformArea = null;
             Set<OSMNode> platformsNodes = new HashSet<>();
             for (OSMRelationMember member : relation.getMembers()) {
-                if ("platform".equals(member.getRole()) && "way".equals(member.getType()) && _ways.containsKey(member.getRef())) {
+                if ("way".equals(member.getType()) && "platform".equals(member.getRole()) && _areaWayIds.contains(member.getRef())) {
                     if (platformArea == null)
-                        platformArea = _ways.get(member.getRef());
+                        platformArea = _areaWaysById.get(member.getRef());
                     else
                         LOG.warn("Too many areas in relation " + relation.getId());
-                } else if ("platform".equals(member.getRole()) && "node".equals(member.getType()) && _nodes.containsKey(member.getRef())) {
+                } else if ("relation".equals(member.getType()) && "platform".equals(member.getRole()) && _relations.containsKey(member.getRef())) {
+                    if (platformArea == null)
+                        platformArea = _relations.get(member.getRef());
+                    else
+                        LOG.warn("Too many areas in relation " + relation.getId());
+                } else if ("node".equals(member.getType()) && _nodes.containsKey(member.getRef())) {
                     platformsNodes.add(_nodes.get(member.getRef()));
-                } else
-                    LOG.warn("Unable to properly process public transportation relation " + relation.toString());
+                }
             }
             if (platformArea != null && !platformsNodes.isEmpty())
                 stopsInAreas.put(platformArea, platformsNodes);

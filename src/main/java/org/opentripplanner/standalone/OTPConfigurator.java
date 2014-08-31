@@ -183,7 +183,7 @@ public class OTPConfigurator {
             osmBuilder.setDefaultWayPropertySetSource(defaultWayPropertySetSource);
             osmBuilder.skipVisibility = params.skipVisibility;
             graphBuilder.addGraphBuilder(osmBuilder);
-            graphBuilder.addGraphBuilder(new PruneFloatingIslands());            
+            graphBuilder.addGraphBuilder(new PruneFloatingIslands());
         }
         if (servicemapFile != null) {
             graphBuilder.addGraphBuilder(new ServiceMapGraphBuilderImpl(servicemapFile));
