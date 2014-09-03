@@ -35,11 +35,10 @@ public class SimpleAStarPathServiceImpl implements PathService {
 
     private GraphService graphService;
 
-    private GenericAStar sptService;
+    private Class sptServiceTemplate;
 
-    public SimpleAStarPathServiceImpl(GraphService graphService, GenericAStar sptService) {
+    public SimpleAStarPathServiceImpl(GraphService graphService) {
         this.graphService = graphService;
-        this.sptService = sptService;
     }
 
     /**
@@ -60,6 +59,8 @@ public class SimpleAStarPathServiceImpl implements PathService {
 
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {
+
+        GenericAStar sptService = new GenericAStar();
 
         ArrayList<GraphPath> paths = new ArrayList<>();
 
