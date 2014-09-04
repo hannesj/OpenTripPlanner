@@ -467,7 +467,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         }
                     }
                 }
-
                 // run this at end of ctor so that exception
                 // can be caught in the right place
                 toJTSMultiPolygon();
@@ -945,12 +944,13 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         continue;
                     }
 
+                    // Add stops from public transit relations into the area
                     if (stopsInAreas.containsKey(area.parent)){
-                        for(OSMNode node :stopsInAreas.get(area.parent)){
-                            addtoVisibilityAndStartSets(startingNodes, visibilityPoints,
-                                    visibilityNodes, node);
+                        for(OSMNode node : stopsInAreas.get(area.parent)){
+                            addtoVisibilityAndStartSets(startingNodes, visibilityPoints, visibilityNodes, node);
                         }
                     }
+
 
                     for (Ring outerRing : area.outermostRings) {
                         for (int i = 0; i < outerRing.nodes.size(); ++i) {
@@ -1140,7 +1140,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         private void addtoVisibilityAndStartSets(Set<OSMNode> startingNodes,
                                                  ArrayList<VLPoint> visibilityPoints, ArrayList<OSMNode> visibilityNodes,
                                                  OSMNode node) {
-            if (_nodesWithNeighbors.contains(node.getId()) || multipleAreasContain(node.getId()) || nodeIsStop(node)) {
+            if (_nodesWithNeighbors.contains(node.getId()) || multipleAreasContain(node.getId()) || node.isStop()) {
 
                 startingNodes.add(node);
                 VLPoint point = new VLPoint(node.lon, node.lat);
@@ -1366,14 +1366,6 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
             }
-        }
-
-        boolean nodeIsStop(OSMNode curNode) {
-            return "bus_stop".equals(curNode.getTag("highway"))
-            || "tram_stop".equals(curNode.getTag("railway"))
-            || "station".equals(curNode.getTag("railway"))
-            || "halt".equals(curNode.getTag("railway"))
-            || "bus_station".equals(curNode.getTag("amenity"));
         }
 
         private VLPolygon makeStandardizedVLPolygon(List<VLPoint> vertices, List<OSMNode> nodes,
@@ -1639,7 +1631,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     if (intersectionNodes.containsKey(endNode) || i == nodes.size() - 2
                             || nodes.subList(0, i).contains(nodes.get(i))
                             || osmEndNode.hasTag("ele")
-                            || nodeIsStop(osmEndNode)) {
+                            || osmEndNode.isStop()) {
                         segmentCoordinates.add(getCoordinate(osmEndNode));
 
                         geometry = GeometryUtils.getGeometryFactory().createLineString(
@@ -1985,7 +1977,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 _bikeRentalNodes.add(node);
                 return;
             }
-            if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId()) || nodeIsStop(node)))
+            if (!(_nodesWithNeighbors.contains(node.getId()) || _areaNodes.contains(node.getId()) || node.isStop()))
                 return;
 
             if (_nodes.containsKey(node.getId()))
@@ -2427,9 +2419,17 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         }
 
         /**
-         * Process an OSM public transport stop.
+         * Process an OSM public transport stop area relation.
+         *
+         * This goes through all public_transport=stop_area relations and adds the parent
+         * (either an area or multipolygon relation) as the key and a Set of transit stop nodes
+         * that should be included in the parent area as the value into stopsInAreas.
+         * This improves TransitToTaggedStopsGraphBuilder by enabling us to have unconnected
+         * stop nodes within the areas by creating relations .
          *
          * @param relation
+         * @author hannesj
+         * @see "http://wiki.openstreetmap.org/wiki/Tag:public_transport%3Dstop_area"
          */
         private void processPublicTransportStopArea(OSMRelation relation) {
             OSMWithTags platformArea = null;
@@ -2837,7 +2837,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                     }
                 }
 
-                if (nodeIsStop(node)) {
+                if (node.isStop()) {
                     String ref = node.getTag("ref");
                     String name = node.getTag("name");
                     if (ref != null) {
