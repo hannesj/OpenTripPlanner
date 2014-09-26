@@ -16,6 +16,7 @@ import org.opentripplanner.routing.alertpatch.Alert;
 import org.opentripplanner.routing.alertpatch.TranslatedString;
 import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
+import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,26 +131,27 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
                     continue;
 
                 Geometry searchArea = geom.buffer(SEARCH_RADIUS_DEG);
-                Collection<StreetEdge> edges = graph.streetIndex.getEdgesForEnvelope(searchArea.getEnvelopeInternal());
-                for(StreetEdge e: edges){
-                    if (!(e instanceof PlainStreetEdge) || searchArea.disjoint(e.getGeometry()))
+                Collection<Edge> edges = graph.streetIndex.getEdgesForEnvelope(searchArea.getEnvelopeInternal());
+                for(Edge edge: edges){
+                    if (!(edge instanceof PlainStreetEdge) || searchArea.disjoint(edge.getGeometry()))
                         continue;
-                    if (alertEdges.contains(e)){
-                        removeAlerts(e);
-                        alertEdges.remove(e);
+                    PlainStreetEdge streetEdge = (PlainStreetEdge)edge;
+                    if (alertEdges.contains(streetEdge)){
+                        removeAlerts(streetEdge);
+                        alertEdges.remove(streetEdge);
                     }
 
-                    Set<Alert> notes = e.getNotes();
+                    Set<Alert> notes = streetEdge.getNotes();
                     if (notes == null){
                         notes = new HashSet<Alert>();
                         notes.add(a);
-                        ((PlainStreetEdge) e).setNote(notes);
+                        ((PlainStreetEdge) streetEdge).setNote(notes);
                     }
                     else {
                         notes.add(a);
                     }
-                    newAlertEdges.add(e);
-                    LOG.trace("Intersects with: " + e.getLabel());
+                    newAlertEdges.add(streetEdge);
+                    LOG.trace("Intersects with: " + streetEdge.getLabel());
                 }
             }
             Iterator<StreetEdge> si = alertEdges.iterator();

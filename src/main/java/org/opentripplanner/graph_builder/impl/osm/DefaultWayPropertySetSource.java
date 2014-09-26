@@ -74,6 +74,7 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         setProperties(props, "railway=platform", StreetTraversalPermission.PEDESTRIAN);
         setProperties(props, "footway=sidewalk;highway=footway",
                 StreetTraversalPermission.PEDESTRIAN);
+        setProperties(props, "highway=footway", StreetTraversalPermission.PEDESTRIAN);
 
         /* PEDESTRIAN_AND_BICYCLE */
         setProperties(props, "highway=cycleway", StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE,
@@ -81,10 +82,7 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         setProperties(props, "highway=path", StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE,
                 0.75, 0.75);
         setProperties(props, "highway=pedestrian",
-                StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 0.90, 0.90);
-        // Avoid biking on sidewalks
-        setProperties(props, "highway=footway", StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE,
-                1.7, 1.7);
+                StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, 1.3, 1.3);
         setProperties(props, "highway=bridleway", StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE,
                 1.3, 1.3);
 
@@ -99,10 +97,10 @@ public class DefaultWayPropertySetSource implements WayPropertySetSource {
         setProperties(props, "highway=residential_link", StreetTraversalPermission.ALL, 0.98, 0.98);
         setProperties(props, "highway=tertiary", StreetTraversalPermission.ALL, 1, 1);
         setProperties(props, "highway=tertiary_link", StreetTraversalPermission.ALL, 1, 1);
-        setProperties(props, "highway=secondary", StreetTraversalPermission.ALL, 1.5, 1.5);
-        setProperties(props, "highway=secondary_link", StreetTraversalPermission.ALL, 1.5, 1.5);
-        setProperties(props, "highway=primary", StreetTraversalPermission.ALL, 2.06, 2.06);
-        setProperties(props, "highway=primary_link", StreetTraversalPermission.ALL, 2.06, 2.06);
+        setProperties(props, "highway=secondary", StreetTraversalPermission.BICYCLE_AND_DRIVING, 1.5, 1.5);
+        setProperties(props, "highway=secondary_link", StreetTraversalPermission.BICYCLE_AND_DRIVING, 1.5, 1.5);
+        setProperties(props, "highway=primary", StreetTraversalPermission.BICYCLE_AND_DRIVING, 2.06, 2.06);
+        setProperties(props, "highway=primary_link", StreetTraversalPermission.BICYCLE_AND_DRIVING, 2.06, 2.06);
 
         /* DRIVING ONLY */
         // trunk and motorway links are often short distances and necessary connections
