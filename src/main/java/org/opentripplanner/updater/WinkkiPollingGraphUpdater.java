@@ -106,12 +106,17 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
         @Override
         public void run(Graph graph) {
             FeatureIterator<SimpleFeature> features = null;
-            Set<StreetEdge> newAlertEdges = new HashSet<>();
 
             try {
                 features = source.getFeatures(query).features();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+            Iterator<StreetEdge> si = alertEdges.iterator();
+            while (si.hasNext()){
+                StreetEdge e = si.next();
+                graph.streetNotesService.removeNotes(e); //TODO: Remove only winkki notes
+                si.remove();
             }
             while ( features.hasNext()){
                 SimpleFeature feature = features.next();
@@ -121,13 +126,13 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
                 }
                 Geometry geom = (Geometry) feature.getDefaultGeometry();
 
-                Alert a = Alert.createSimpleAlerts("winkki:" + feature.getAttribute("licence_type"));
-                a.alertDescriptionText = feature.getAttribute("event_description") == null ? new TranslatedString("") : new TranslatedString(feature.getAttribute("event_description").toString());
-                a.effectiveStartDate = feature.getAttribute("licence_startdate") == null ? (Date) feature.getAttribute("event_startdate") : (Date) feature.getAttribute("licence_startdate");
-                a.effectiveEndDate = feature.getAttribute("licence_enddate") == null ? (Date) feature.getAttribute("event_enddate") : (Date) feature.getAttribute("licence_enddate");
-                a.geometry = g.toString(geom);
+                Alert alert = Alert.createSimpleAlerts("winkki:" + feature.getAttribute("licence_type"));
+                alert.alertDescriptionText = feature.getAttribute("event_description") == null ? new TranslatedString("") : new TranslatedString(feature.getAttribute("event_description").toString());
+                alert.effectiveStartDate = feature.getAttribute("licence_startdate") == null ? (Date) feature.getAttribute("event_startdate") : (Date) feature.getAttribute("licence_startdate");
+                alert.effectiveEndDate = feature.getAttribute("licence_enddate") == null ? (Date) feature.getAttribute("event_enddate") : (Date) feature.getAttribute("licence_enddate");
+                alert.geometry = g.toString(geom);
 
-                if (a.effectiveStartDate.after(new Date()) || a.effectiveEndDate.before(new Date()))
+                if (alert.effectiveStartDate.after(new Date()) || alert.effectiveEndDate.before(new Date()))
                     continue;
 
                 Geometry searchArea = geom.buffer(SEARCH_RADIUS_DEG);
@@ -136,43 +141,15 @@ public class WinkkiPollingGraphUpdater extends PollingGraphUpdater{
                     if (!(edge instanceof PlainStreetEdge) || searchArea.disjoint(edge.getGeometry()))
                         continue;
                     PlainStreetEdge streetEdge = (PlainStreetEdge)edge;
-                    if (alertEdges.contains(streetEdge)){
-                        removeAlerts(streetEdge);
-                        alertEdges.remove(streetEdge);
-                    }
-
-                    Set<Alert> notes = streetEdge.getNotes();
-                    if (notes == null){
-                        notes = new HashSet<Alert>();
-                        notes.add(a);
-                        ((PlainStreetEdge) streetEdge).setNote(notes);
-                    }
-                    else {
-                        notes.add(a);
-                    }
-                    newAlertEdges.add(streetEdge);
+                    graph.streetNotesService.addNote(edge, alert);
+                    alertEdges.add(streetEdge);
                     LOG.trace("Intersects with: " + streetEdge.getLabel());
                 }
             }
-            Iterator<StreetEdge> si = alertEdges.iterator();
-            while (si.hasNext()){
-                StreetEdge e = si.next();
-                removeAlerts(e);
-                si.remove();
-            }
-            alertEdges = newAlertEdges;
-            LOG.info("Added " + newAlertEdges.size() + " edges with notes");
+
+            LOG.info("Added " + alertEdges.size() + " edges with notes");
         }
 
-        private void removeAlerts(StreetEdge e) {
-            Set<Alert> edgeNotes = e.getNotes();
-            Iterator<Alert> ni = edgeNotes.iterator();
-            while (ni.hasNext()){
-                Alert alert = ni.next();
-                if (alert.alertHeaderText.getSomeTranslation().startsWith("winkki"))
-                    ni.remove();
-            }
-        }
     }
 
 
