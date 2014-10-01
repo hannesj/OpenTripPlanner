@@ -309,6 +309,10 @@ public class StreetEdge extends Edge implements Cloneable {
         // TODO(flamholz): factor out this bike, wheelchair and walking specific logic to somewhere central.
         if (options.wheelchairAccessible) {
             weight = elevationProfileSegment.getSlopeSpeedFactor() * getDistance() / speed;
+            //Slightly prefer edges that do not allow cars, in order to prefer sidewalks to streets.
+            if (this.getStreetClass() != StreetEdge.CLASS_OTHERPATH ){
+                weight *= 1.5;
+            }
         } else if (traverseMode.equals(TraverseMode.BICYCLE)) {
             time = elevationProfileSegment.getSlopeSpeedFactor() * getDistance() / speed;
             switch (options.optimize) {
@@ -357,6 +361,9 @@ public class StreetEdge extends Edge implements Cloneable {
                 double elevationUtilsSpeed = 4.0 / 3.0;
                 weight = costs * (elevationUtilsSpeed / speed);
                 time = weight; //treat cost as time, as in the current model it actually is the same (this can be checked for maxSlope == 0)
+                if (this.getStreetClass() != StreetEdge.CLASS_OTHERPATH ){
+                    weight *= 1.4;
+                }
                 /*
                 // debug code
                 if(weight > 100){
