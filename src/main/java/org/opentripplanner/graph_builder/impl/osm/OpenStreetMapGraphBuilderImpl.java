@@ -1140,7 +1140,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
         private void addtoVisibilityAndStartSets(Set<OSMNode> startingNodes,
                                                  ArrayList<VLPoint> visibilityPoints, ArrayList<OSMNode> visibilityNodes,
                                                  OSMNode node) {
-            if (_nodesWithNeighbors.contains(node.getId()) || multipleAreasContain(node.getId()) || node.isStop()) {
+            if (intersectionNodes.containsKey(node.getId()) || multipleAreasContain(node.getId()) || node.isStop()) {
 
                 startingNodes.add(node);
                 VLPoint point = new VLPoint(node.lon, node.lat);

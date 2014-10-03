@@ -145,7 +145,7 @@ public class DefaultRemainingWeightHeuristic implements RemainingWeightHeuristic
                 // assume that the best route is no more than 10 times better than
                 // the as-the-crow-flies flat base route.
                 // FIXME random magic constants
-                return options.getStreetSpeedUpperBound() * 10;
+                return options.getStreetSpeedUpperBound() * 2;
             }
         }
     }
