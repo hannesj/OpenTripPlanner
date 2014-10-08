@@ -28,18 +28,18 @@ public class PoiClassTerminationStrategy implements SearchTerminationStrategy{
 
 
     @Override
-    public boolean shouldSearchContinue(Vertex origin, Vertex target, State current, ShortestPathTree spt, RoutingRequest traverseOptions) {
+    public boolean shouldSearchTerminate(Vertex origin, Vertex target, State current, ShortestPathTree spt, RoutingRequest traverseOptions) {
         Vertex currentVertex = current.getVertex();
         if (currentVertex instanceof PoiVertex){
             if (((PoiVertex) currentVertex).categories.contains(category)){
                 if (!foundVertices.contains(currentVertex)) {
                     foundVertices.add(currentVertex);
                     if (foundVertices.size() >= numItineraries){
-                        return false;
+                        return true;
                     }
                 }
             }
         }
-        return true;
+        return false;
     }
 }
