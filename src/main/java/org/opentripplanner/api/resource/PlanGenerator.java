@@ -670,6 +670,12 @@ public class PlanGenerator {
         leg.to = makePlace(states[states.length - 1], lastVertex, null, lastStop, tripTimes);
         leg.to.departure = null;
 
+        if (states[0].getOptions().wheelchairAccessible) {
+            if (firstStop != null && firstStop.getWheelchairBoarding() == 0)
+                leg.addAlert(Alert.createSimpleAlerts("No accessibility for departure stop"));
+            if (firstStop != null && lastStop.getWheelchairBoarding() == 0)
+                leg.addAlert(Alert.createSimpleAlerts("No accessibility for arrival stop"));
+        }
         if (showIntermediateStops) {
             leg.stop = new ArrayList<Place>();
 
