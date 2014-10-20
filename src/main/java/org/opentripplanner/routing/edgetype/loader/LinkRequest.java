@@ -99,7 +99,9 @@ public class LinkRequest {
      * @param v Sets result to true if the links were successfully added, otherwise false
      */
     public void connectVertexToStreets(PoiVertex v) {
-        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null, null);
+        RoutingRequest options = new RoutingRequest(TraverseMode.WALK);
+
+        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null, options);
         if (nearbyStreetVertices == null) {
             result = false;
         } else {
@@ -293,7 +295,7 @@ public class LinkRequest {
         StreetWithElevationEdge forward2 = new StreetWithElevationEdge(e1midpoint, e1v2, forward2Geom, name, lengthOut,
                 e1.getPermission(), e1.isBack());
         if (e1 instanceof AreaEdge) {
-            ((AreaEdge) e1).getArea().addVertex(e1midpoint, linker.graph);
+            //((AreaEdge) e1).getArea().addVertex(e1midpoint, linker.graph);
 
         }
 
@@ -309,7 +311,7 @@ public class LinkRequest {
             backward2 = new StreetWithElevationEdge(e2midpoint, e2v2, backGeometryPair.second,
                     name, lengthIn, e2.getPermission(), e2.isBack());
             if (e2 instanceof AreaEdge) {
-                ((AreaEdge) e2).getArea().addVertex(e2midpoint, linker.graph);
+                //((AreaEdge) e2).getArea().addVertex(e2midpoint, linker.graph);
             }
             backward1.setBicycleSafetyFactor(e2.getBicycleSafetyFactor());
             backward2.setBicycleSafetyFactor(e2.getBicycleSafetyFactor());
