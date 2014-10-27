@@ -21,16 +21,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.opentripplanner.graph_builder.GraphBuilderTask;
-import org.opentripplanner.graph_builder.impl.EmbeddedConfigGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.GtfsGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.JOREAccessibilityGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.PruneFloatingIslands;
-import org.opentripplanner.graph_builder.impl.ServiceMapAccessibilityGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.ServiceMapGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.StreetfulStopLinker;
-import org.opentripplanner.graph_builder.impl.StreetlessStopLinker;
-import org.opentripplanner.graph_builder.impl.TransitToStreetNetworkGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.TransitToTaggedStopsGraphBuilderImpl;
+import org.opentripplanner.graph_builder.impl.*;
 import org.opentripplanner.graph_builder.impl.ned.ElevationGraphBuilderImpl;
 import org.opentripplanner.graph_builder.impl.ned.GeotiffGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.ned.NEDGridCoverageFactoryImpl;
@@ -139,6 +130,7 @@ public class OTPConfigurator {
         File servicemapFile = null;
         File servicemapAccessibilityFile = null;
         File joreAccessibilityFile = null;
+        File joreStopFile = null;
         /* For now this is adding files from all directories listed, rather than building multiple graphs. */
         for (File dir : params.build) {
             LOG.info("Searching for graph builder input files in {}", dir);
@@ -168,6 +160,10 @@ public class OTPConfigurator {
                 case JORE_ACCESSIBILITY:
                     LOG.info("Found JORE accessibility file {}", file);
                     joreAccessibilityFile = file;
+                    break;
+                case JORE_STOP:
+                    LOG.info("Found JORE stop file {}", file);
+                    joreStopFile = file;
                     break;
                 case CONFIG:
                     if (!params.noEmbedConfig) {
@@ -224,6 +220,10 @@ public class OTPConfigurator {
             // When using the long distance path service, or when there is no street data,
             // link stops to each other based on distance only, unless user has requested linking
             // based on transfers.txt or the street network (if available).
+            if (joreStopFile != null) {
+                LOG.info("Added jore translator");
+                graphBuilder.addGraphBuilder(new JORETranslatedNameGraphBuilderImpl(joreStopFile));
+            }
             if (joreAccessibilityFile != null){
                 graphBuilder.addGraphBuilder(new JOREAccessibilityGraphBuilderImpl(joreAccessibilityFile));
             }
@@ -276,7 +276,7 @@ public class OTPConfigurator {
     }
 
     private static enum InputFileType {
-        GTFS, OSM, CONFIG, OTHER, SERVICEMAP, SERVICEMAP_ACCESSIBILITY, JORE_ACCESSIBILITY;
+        GTFS, OSM, CONFIG, OTHER, SERVICEMAP, SERVICEMAP_ACCESSIBILITY, JORE_ACCESSIBILITY, JORE_STOP;
 
         public static InputFileType forFile(File file) {
             String name = file.getName();
@@ -295,6 +295,7 @@ public class OTPConfigurator {
             if (name.equals("unit.json")) return SERVICEMAP;
             if (name.equals("accessibility_property.json")) return SERVICEMAP_ACCESSIBILITY;
             if (name.equals("esteet.dat")) return JORE_ACCESSIBILITY;
+            if (name.equals("pysakki.dat")) return JORE_STOP;
             return OTHER;
         }
     }

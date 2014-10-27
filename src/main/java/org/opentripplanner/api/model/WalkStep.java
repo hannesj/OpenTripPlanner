@@ -17,6 +17,7 @@ package org.opentripplanner.api.model;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlTransient;
@@ -118,6 +119,8 @@ public class WalkStep {
     public List<Alert> alerts;
 
     public transient double angle;
+
+    public Map<String, String> translatedName;
 
     public void setDirections(double lastAngle, double thisAngle, boolean roundabout) {
         relativeDirection = getRelativeDirection(lastAngle, thisAngle, roundabout);

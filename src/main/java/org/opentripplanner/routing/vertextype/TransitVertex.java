@@ -15,6 +15,7 @@ package org.opentripplanner.routing.vertextype;
 
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
+import org.opentripplanner.routing.alertpatch.TranslatedString;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 
@@ -28,6 +29,8 @@ public abstract class TransitVertex extends Vertex {
     private final Stop stop;
 
     public Map<String, String> accessibilityInformation = null;
+
+    public TranslatedString translatedName = new TranslatedString();
 
     public TransitVertex(Graph graph, String label, Stop stop) {
         super(graph, label, stop.getLon(), stop.getLat(), stop.getName());

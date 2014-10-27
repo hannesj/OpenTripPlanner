@@ -62,7 +62,7 @@ public class TransitToTaggedStopsGraphBuilderImpl implements GraphBuilder {
             if (ts.isEntrance() || !ts.hasEntrances()) {
                 boolean wheelchairAccessible = ts.hasWheelchairEntrance();
                 if (!connectVertexToStop(ts, wheelchairAccessible)) {
-                    LOG.debug("Could not connect " + ts.getStopCode() + " at " + ts.getCoordinate().toString());
+                    LOG.info("Could not connect " + ts.getStopCode() + " at " + ts.getCoordinate().toString());
                     //LOG.warn(graph.addBuilderAnnotation(new StopUnlinked(ts)));
                 }
             }

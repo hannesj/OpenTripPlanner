@@ -199,24 +199,34 @@ public class StreetVertexIndexServiceImpl implements StreetVertexIndexService {
                     }
                 }
             }       
-            if (canEscape) { 
+            if (canEscape) {
                 // Coordinate is at an intersection or street endpoint, and has traversible edges.
                 if (!location.hasName()) {
                     LOG.debug("found intersection {}. not splitting.", intersection);
                     // generate names for corners when no name was given
-                    Set<String> uniqueNameSet = new HashSet<String>();
-                    for (Edge e : intersection.getOutgoing()) {
-                        if (e instanceof StreetEdge) {
-                            uniqueNameSet.add(e.getName());
-                        }
-                    }
-                    List<String> uniqueNames = new ArrayList<String>(uniqueNameSet);
                     Locale locale;
                     if (options == null) {
                         locale = new Locale("en");
                     } else {
                         locale = options.locale;
                     }
+                    Set<String> uniqueNameSet = new HashSet<String>();
+                    for (Edge e : intersection.getOutgoing()) {
+                        if (e instanceof StreetEdge) {
+                            if (e.hasBogusName()){
+                                continue;
+                            }
+                            String s = null;
+                            if (e.translatedName != null) {
+                                s = e.translatedName.getTranslation(locale.getLanguage());
+                            }
+                            if (s == null) {
+                                s = e.getName();
+                            }
+                            uniqueNameSet.add(s);
+                        }
+                    }
+                    List<String> uniqueNames = new ArrayList<String>(uniqueNameSet);
                     ResourceBundle resources = ResourceBundle.getBundle("internals", locale);
                     String fmt = resources.getString("corner");
                     if (uniqueNames.size() > 1) {

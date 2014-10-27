@@ -22,6 +22,7 @@ import javax.xml.bind.annotation.XmlTransient;
 
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.common.MavenVersion;
+import org.opentripplanner.routing.alertpatch.TranslatedString;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.util.IncrementingIdGenerator;
@@ -45,6 +46,8 @@ public abstract class Edge implements Serializable {
      * Identifier of the edge. Negative means not set.
      */
     private int id;
+
+    public TranslatedString translatedName;
 
     protected Vertex fromv;
 

@@ -14,6 +14,7 @@
 package org.opentripplanner.routing.vertextype;
 
 import org.onebusaway.gtfs.model.Stop;
+import org.opentripplanner.routing.alertpatch.TranslatedString;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.PathwayEdge;

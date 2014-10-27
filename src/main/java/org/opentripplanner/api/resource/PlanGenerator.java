@@ -61,11 +61,7 @@ import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.trippattern.TripTimes;
-import org.opentripplanner.routing.vertextype.ExitVertex;
-import org.opentripplanner.routing.vertextype.OffboardVertex;
-import org.opentripplanner.routing.vertextype.OnboardDepartVertex;
-import org.opentripplanner.routing.vertextype.PoiVertex;
-import org.opentripplanner.routing.vertextype.TransitVertex;
+import org.opentripplanner.routing.vertextype.*;
 import org.opentripplanner.util.PolylineEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -162,18 +158,22 @@ public class PlanGenerator {
         GraphPath exemplar = paths.get(0);
         Vertex tripStartVertex = exemplar.getStartVertex();
         Vertex tripEndVertex = exemplar.getEndVertex();
+        Edge tripStartEdge = exemplar.edges.getFirst();
+        Edge tripEndEdge = exemplar.edges.getLast();
         String startName = tripStartVertex.getName();
         String endName = tripEndVertex.getName();
 
-        // Use vertex labels if they don't have names
-        if (startName == null) {
-            startName = tripStartVertex.getLabel();
-        }
-        if (endName == null) {
-            endName = tripEndVertex.getLabel();
-        }
         Place from = new Place(tripStartVertex.getX(), tripStartVertex.getY(), startName);
         Place to = new Place(tripEndVertex.getX(), tripEndVertex.getY(), endName);
+
+        from.bogusName = tripStartEdge.hasBogusName();
+        to.bogusName = tripEndEdge.hasBogusName();
+        if (tripStartEdge.translatedName != null){
+            from.translatedName = tripStartEdge.translatedName.translations;
+        }
+        if (tripEndEdge.translatedName != null){
+            to.translatedName = tripEndEdge.translatedName.translations;
+        }
 
         from.orig = request.from.name;
         to.orig = request.to.name;
@@ -721,14 +721,20 @@ public class PlanGenerator {
 
         if (endOfLeg) edge = state.getBackEdge();
 
+        place.bogusName = edge.hasBogusName();
+
+        if (edge.translatedName != null)
+            place.translatedName = edge.translatedName.translations;
+
         if (vertex instanceof TransitVertex && edge instanceof OnboardEdge) {
             place.stopId = stop.getId();
             place.stopCode = stop.getCode();
             place.platformCode = stop.getPlatformCode();
             place.zoneId = stop.getZoneId();
             place.stopIndex = ((OnboardEdge) edge).getStopIndex();
-            OffboardVertex offboardVertex = (OffboardVertex) graphService.getGraph().getVertex(GtfsLibrary.convertIdToString(place.stopId));
-            place.accessibilityInformation = offboardVertex.accessibilityInformation;
+            TransitVertex transitVertex = (TransitVertex) graphService.getGraph().getVertex(GtfsLibrary.convertIdToString(place.stopId));
+            place.accessibilityInformation = transitVertex.accessibilityInformation;
+            place.translatedName = transitVertex.translatedName.translations;
             if (endOfLeg) place.stopIndex++;
             if (tripTimes != null) {
                 place.stopSequence = tripTimes.getStopSequence(place.stopIndex);
@@ -1059,6 +1065,9 @@ public class PlanGenerator {
         WalkStep step;
         step = new WalkStep();
         step.streetName = en.getName();
+        if (en.translatedName != null){
+            step.translatedName = en.translatedName.translations;
+        }
         step.lon = en.getFromVertex().getX();
         step.lat = en.getFromVertex().getY();
         step.elevation = encodeElevationProfile(s.getBackEdge(), 0);

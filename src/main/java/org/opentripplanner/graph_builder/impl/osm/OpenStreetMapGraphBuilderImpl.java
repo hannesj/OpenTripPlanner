@@ -58,6 +58,7 @@ import org.opentripplanner.openstreetmap.model.OSMWithTags;
 import org.opentripplanner.openstreetmap.services.OpenStreetMapContentHandler;
 import org.opentripplanner.openstreetmap.services.OpenStreetMapProvider;
 import org.opentripplanner.routing.alertpatch.Alert;
+import org.opentripplanner.routing.alertpatch.TranslatedString;
 import org.opentripplanner.routing.algorithm.GenericDijkstra;
 import org.opentripplanner.routing.algorithm.strategies.SkipEdgeStrategy;
 import org.opentripplanner.routing.bike_rental.BikeRentalStation;
@@ -1262,6 +1263,10 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                         name, length, areaPermissions, false, edgeList);
                 street.setCarSpeed(carSpeed);
 
+                if (!areaEntity.hasTag("name") && !areaEntity.hasTag("ref")) {
+                    street.setHasBogusName(true);
+                }
+
                 street.setStreetClass(cls);
                 edges.add(street);
 
@@ -1273,6 +1278,10 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
                 AreaEdge backStreet = edgeFactory.createAreaEdge(endEndpoint, startEndpoint,
                         (LineString) line.reverse(), name, length, areaPermissions, true, edgeList);
                 backStreet.setCarSpeed(carSpeed);
+
+                if (!areaEntity.hasTag("name") && !areaEntity.hasTag("ref")) {
+                    backStreet.setHasBogusName(true);
+                }
 
                 backStreet.setStreetClass(cls);
                 edges.add(backStreet);
@@ -2561,6 +2570,14 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             StreetEdge street = edgeFactory.createEdge(start, end, geometry, name, length,
                     permissions, back);
             street.setCarSpeed(carSpeed);
+
+            if (way.getTagsByPrefix("name") != null){
+                street.translatedName = new TranslatedString();
+                for (Map.Entry<String, String> entry: way.getTagsByPrefix("name").entrySet()){
+                    String lang = entry.getKey().replace("name","").replace(":","");
+                    street.translatedName.addTranslation(lang, entry.getValue());
+                }
+            }
 
             String highway = way.getTag("highway");
             int cls;
