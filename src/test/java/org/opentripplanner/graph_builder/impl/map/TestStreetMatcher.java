@@ -263,5 +263,10 @@ public class TestStreetMatcher {
         @Override
         public void setCarSpeed(float carSpeed) {}
 
+        @Override
+        public String getLabel() {
+            return "label";
+        }
+
     }
 }

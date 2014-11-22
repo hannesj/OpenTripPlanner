@@ -108,6 +108,12 @@ public class WalkableAreaBuilder {
         this.__handler = __handler;
     }
 
+    private static final String areaLabelFormat = "osm:area:%d";
+
+    private String getLabelForArea(OSMWithTags way) {
+        return String.format(areaLabelFormat, way.getId());
+    }
+
     public void build(AreaGroup group) {
         Set<OSMNode> startingNodes = new HashSet<OSMNode>();
         Set<Vertex> startingVertices = new HashSet<Vertex>();
@@ -387,6 +393,7 @@ public class WalkableAreaBuilder {
             AreaEdge street = edgeFactory.createAreaEdge(startEndpoint, endEndpoint, line, name,
                     length, areaPermissions, false, edgeList);
             street.setCarSpeed(carSpeed);
+            street.setLabel(getLabelForArea(areaEntity));
 
             if (!areaEntity.hasTag("name") && !areaEntity.hasTag("ref")) {
                 street.setHasBogusName(true);

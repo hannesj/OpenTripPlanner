@@ -222,6 +222,18 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
 
         private OSMDatabase osmdb;
 
+        private static final String wayLabelFormat = "osm:way:%d";
+
+        private static final String areaLabelFormat = "osm:area:%d";
+
+        private String getLabelForWay(OSMWithTags way) {
+            return String.format(wayLabelFormat, way.getId());
+        }
+
+        private String getLabelForArea(OSMWithTags way) {
+            return String.format(areaLabelFormat, way.getId());
+        }
+
         /**
          * The bike safety factor of the safest street
          */
@@ -1033,6 +1045,7 @@ public class OpenStreetMapGraphBuilderImpl implements GraphBuilder {
             StreetEdge street = edgeFactory.createEdge(start, end, geometry, name, length,
                     permissions, back);
             street.setCarSpeed(carSpeed);
+            street.setLabel(getLabelForWay(way));
 
             String highway = way.getTag("highway");
             int cls;
