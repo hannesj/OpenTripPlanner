@@ -34,14 +34,12 @@ import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.PoiLinkEdge;
-import org.opentripplanner.routing.edgetype.StreetBikeRentalLink;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
 import org.opentripplanner.routing.edgetype.StreetWithElevationEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.CandidateEdgeBundle;
 import org.opentripplanner.routing.util.ElevationUtils;
-import org.opentripplanner.routing.vertextype.BikeRentalStationVertex;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.PoiVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
@@ -68,50 +66,21 @@ public class LinkRequest {
     private List<Edge> edgesAdded = new ArrayList<Edge>();
 
     private DistanceLibrary distanceLibrary;
-    
+
+    /**
+     * A generic factory of street link to link a particular type of vertex to the street network
+     * during linking stage.
+     */
+    public interface StreetLinkFactory<V extends Vertex> {
+
+        public Collection<? extends Edge> connect(StreetVertex sv, V v);
+    }
+
     public LinkRequest(NetworkLinkerLibrary linker) {
         this.linker = linker;
         this.distanceLibrary = linker.getDistanceLibrary();
     }
     
-    /**
-     * The entry point for networklinker to link each bike rental station.
-     * 
-     * @param v
-     * Sets result to true if the links were successfully added, otherwise false
-     */
-    public void connectVertexToStreets(BikeRentalStationVertex v) {
-        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null, null);
-        if (nearbyStreetVertices == null) {
-            result = false;
-        } else {
-            for (StreetVertex sv : nearbyStreetVertices) {
-                addEdges(new StreetBikeRentalLink(sv, v), 
-                         new StreetBikeRentalLink(v, sv));
-            }
-            result = true;
-        }
-    }
-
-    /**
-     * The entry point for networklinker to link each poi.
-     *
-     * @param v Sets result to true if the links were successfully added, otherwise false
-     */
-    public void connectVertexToStreets(PoiVertex v) {
-        RoutingRequest options = new RoutingRequest(TraverseMode.WALK);
-
-        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null, options);
-        if (nearbyStreetVertices == null) {
-            result = false;
-        } else {
-            for (StreetVertex sv : nearbyStreetVertices) {
-                addEdges(new PoiLinkEdge(sv, v), new PoiLinkEdge(v, sv));
-            }
-            result = true;
-        }
-    }
-
     public boolean getResult() {
         if (result == null) {
             throw new IllegalStateException("Can't get result of LinkRequest; no operation performed");
@@ -129,7 +98,9 @@ public class LinkRequest {
      * Used by both the network linker and for adding temporary "extra" edges at the origin 
      * and destination of a search.
      */
-    private Collection<StreetVertex> getNearbyStreetVertices(Vertex v, Collection<Edge> nearbyRouteEdges, RoutingRequest options) {
+    private Collection<StreetVertex> getNearbyStreetVertices(Vertex v,
+            Collection<Edge> nearbyRouteEdges, RoutingRequest options,
+            boolean possibleTransitLinksOnly) {
         Collection<StreetVertex> existing = linker.splitVertices.get(v);
         if (existing != null)
             return existing;
@@ -144,7 +115,8 @@ public class LinkRequest {
         /* is there a bundle of edges nearby to use or split? */
         GenericLocation location = new GenericLocation(coordinate);
         TraversalRequirements reqs = new TraversalRequirements(options);
-        CandidateEdgeBundle edges = linker.index.getClosestEdges(location, reqs, null, nearbyRouteEdges, true);
+        CandidateEdgeBundle edges = linker.index.getClosestEdges(location, reqs, null,
+                nearbyRouteEdges, possibleTransitLinksOnly);
         if (edges == null || edges.size() < 1) {
             // no edges were found nearby, or a bidirectional/loop bundle of edges was not identified
             LOG.debug("found too few edges: {} {}", v.getName(), v.getCoordinate());
@@ -321,6 +293,10 @@ public class LinkRequest {
                     e2.getElevationProfile(), lengthIn, totalGeomLength), false);
             backward1.setHasBogusName(e2.hasBogusName());
             backward2.setHasBogusName(e2.hasBogusName());
+            backward1.setStairs(e2.isStairs());
+            backward2.setStairs(e2.isStairs());
+            backward1.setWheelchairAccessible(e2.isWheelchairAccessible());
+            backward2.setWheelchairAccessible(e2.isWheelchairAccessible());
             addEdges(backward1, backward2);
         }
 
@@ -334,6 +310,10 @@ public class LinkRequest {
 
         forward1.setHasBogusName(e1.hasBogusName());
         forward2.setHasBogusName(e1.hasBogusName());
+        forward1.setStairs(e1.isStairs());
+        forward2.setStairs(e1.isStairs());
+        forward1.setWheelchairAccessible(e1.isWheelchairAccessible());
+        forward2.setWheelchairAccessible(e1.isWheelchairAccessible());
 
         // swap the new split edge into the replacements list, and remove the old ones
         ListIterator<P2<StreetEdge>> it = replacement.listIterator();
@@ -386,13 +366,41 @@ public class LinkRequest {
         TraverseModeSet modes = v.getModes().clone();
         modes.setMode(TraverseMode.WALK, true);
         RoutingRequest request = new RoutingRequest(modes);
-        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, nearbyEdges, request);
+        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, nearbyEdges,
+                request, true);
         if (nearbyStreetVertices == null) {
             result = false;
         } else {
             for (StreetVertex sv : nearbyStreetVertices) {
                 new StreetTransitLink(sv, v, wheelchairAccessible);
                 new StreetTransitLink(v, sv, wheelchairAccessible);
+            }
+            result = true;
+        }
+    }
+
+    /**
+     * Link a generic vertex.
+     * 
+     * @param v The vertex to link to the street network
+     * @param modes The required traverse mode permissions for the street to link to (optional, can be null).
+     * @param streetLinkFactory Factory of linking edges to link this vertex to any found street vertices.
+     * Sets result to true if the links were successfully added, otherwise false
+     */
+    public <V extends Vertex> void connectVertexToStreets(V v, TraverseModeSet modes,
+            StreetLinkFactory<V> streetLinkFactory) {
+        RoutingRequest request = null;
+        if (modes != null) {
+            request = new RoutingRequest(modes);
+        }
+        Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, null, request,
+                false);
+        if (nearbyStreetVertices == null) {
+            result = false;
+        } else {
+            for (StreetVertex sv : nearbyStreetVertices) {
+                Collection<? extends Edge> edges = streetLinkFactory.connect(sv, v);
+                addEdges(edges.toArray(new Edge[0]));
             }
             result = true;
         }

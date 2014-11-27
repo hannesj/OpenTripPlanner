@@ -19,9 +19,11 @@ import org.opentripplanner.api.resource.PlanGenerator;
 import org.opentripplanner.inspector.TileRendererManager;
 import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.impl.GenericAStarFactory;
 import org.opentripplanner.routing.impl.LongDistancePathService;
 import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
 import org.opentripplanner.routing.impl.SimpleAStarPathServiceImpl;
+import org.opentripplanner.routing.impl.SPTServiceFactory;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.services.SPTService;
@@ -48,7 +50,7 @@ public class OTPServer {
     public PathService pathService;
     public RoutingRequest routingRequest; // the prototype routing request which establishes default parameter values
     public PlanGenerator planGenerator;
-    public SPTService sptService;
+    public SPTServiceFactory sptServiceFactory;
 
     // Optional Analyst Modules
     public Renderer renderer;
@@ -60,6 +62,8 @@ public class OTPServer {
     public PointSetCache pointSetCache;
 
     public TileRendererManager tileRendererManager;
+    
+    public CommandLineParameters params;
 
     public Router getRouter(String routerId) {
         return routers.get(routerId);
@@ -68,18 +72,20 @@ public class OTPServer {
     public OTPServer (CommandLineParameters params, GraphService gs) {
         LOG.info("Wiring up and configuring server.");
 
+        this.params = params; 
+        
         // Core OTP modules
         graphService = gs;
         routingRequest = new RoutingRequest();
-        sptService = new GenericAStar();
+        sptServiceFactory = new GenericAStarFactory();
 
         // Choose a PathService to wrap the SPTService, depending on expected maximum path lengths
         if (params.longDistance) {
-            LongDistancePathService pathService = new LongDistancePathService(graphService, sptService);
+            LongDistancePathService pathService = new LongDistancePathService(graphService, sptServiceFactory);
             pathService.timeout = 10;
             this.pathService = pathService;
         } else {
-            SimpleAStarPathServiceImpl pathService = new SimpleAStarPathServiceImpl(graphService);
+            SimpleAStarPathServiceImpl pathService = new SimpleAStarPathServiceImpl(graphService, sptServiceFactory);
             pathService.firstPathTimeout = 4.0;
             pathService.multiPathTimeout = 0.5;
             this.pathService = pathService;
@@ -93,10 +99,10 @@ public class OTPServer {
         // Optional Analyst Modules.
         if (params.analyst) {
             tileCache = new TileCache(graphService);
-            sptCache = new SPTCache(sptService, graphService);
+            sptCache = new SPTCache(sptServiceFactory, graphService);
             renderer = new Renderer(tileCache, sptCache);
-            sampleGridRenderer = new SampleGridRenderer(graphService, sptService);
-            isoChroneSPTRenderer = new IsoChroneSPTRendererAccSampling(graphService, sptService, sampleGridRenderer);
+            sampleGridRenderer = new SampleGridRenderer(graphService, sptServiceFactory);
+            isoChroneSPTRenderer = new IsoChroneSPTRendererAccSampling(graphService, sptServiceFactory, sampleGridRenderer);
             surfaceCache = new SurfaceCache(30);
             pointSetCache = new DiskBackedPointSetCache(100, new File(params.pointSetDirectory));
         }

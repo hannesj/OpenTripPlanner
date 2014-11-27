@@ -23,7 +23,6 @@ import java.util.zip.ZipFile;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.graph_builder.impl.*;
 import org.opentripplanner.graph_builder.impl.ned.ElevationGraphBuilderImpl;
-import org.opentripplanner.graph_builder.impl.ned.GeotiffGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.ned.NEDGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl;
@@ -35,9 +34,10 @@ import org.opentripplanner.openstreetmap.impl.AnyFileBasedOpenStreetMapProviderI
 import org.opentripplanner.openstreetmap.services.OpenStreetMapProvider;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.DefaultFareServiceFactory;
-import org.opentripplanner.routing.impl.GraphServiceAutoDiscoverImpl;
-import org.opentripplanner.routing.impl.GraphServiceBeanImpl;
+import org.opentripplanner.routing.impl.GraphScanner;
 import org.opentripplanner.routing.impl.GraphServiceImpl;
+import org.opentripplanner.routing.impl.InputStreamGraphSource;
+import org.opentripplanner.routing.impl.MemoryGraphSource;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.updater.PropertiesPreferences;
 import org.opentripplanner.visualizer.GraphVisualizer;
@@ -74,39 +74,34 @@ public class OTPConfigurator {
 
     /** Create a cached GraphService that will be shared between all OTP components. */
     public void makeGraphService(Graph graph) {
-        /* Hand off graph in memory to server in a single-graph in-memory GraphServiceImpl. */
-        if (graph != null && ( params.inMemory || params.preFlight) ) {
+        GraphServiceImpl graphService = new GraphServiceImpl(params.autoReload);
+        this.graphService = graphService;
+        InputStreamGraphSource.FileFactory graphSourceFactory = new InputStreamGraphSource.FileFactory();
+        graphService.graphSourceFactory = graphSourceFactory;
+        if (params.graphDirectory != null) {
+            graphSourceFactory.basePath = new File(params.graphDirectory);
+        }
+        if (graph != null && (params.inMemory || params.preFlight)) {
+            /* Hand off graph in memory to server in a in-memory GraphSource. */
             try {
                 FileInputStream graphConfiguration = new FileInputStream(params.graphConfigFile);
                 Preferences config = new PropertiesPreferences(graphConfiguration);
-                this.graphService = new GraphServiceBeanImpl(graph, config);
+                this.graphService.registerGraph("", new MemoryGraphSource("", graph, config));
             } catch (Exception e) {
-                if (params.graphConfigFile != null) LOG.error("Can't read config file", e);
-                this.graphService = new GraphServiceBeanImpl(graph, null);
+                if (params.graphConfigFile != null)
+                    LOG.error("Can't read config file", e);
+                this.graphService.registerGraph("", new MemoryGraphSource("", graph));
             }
-        } else if (params.autoScan) {
-            /* Create an auto-scan+reload GraphService */
-            GraphServiceAutoDiscoverImpl graphService = new GraphServiceAutoDiscoverImpl();
-            if (params.graphDirectory != null) {
-                graphService.setPath(params.graphDirectory);
-            }
+        }
+        if (params.routerIds.size() > 0 || params.autoScan) {
+            /* Auto-register pre-existing graph on disk, with optional auto-scan. */
+            GraphScanner graphScanner = new GraphScanner(graphService, params.autoScan);
+            graphScanner.basePath = graphSourceFactory.basePath;
             if (params.routerIds.size() > 0) {
-                graphService.setDefaultRouterId(params.routerIds.get(0));
+                graphScanner.defaultRouterId = params.routerIds.get(0);
             }
-            graphService.startup();
-            this.graphService = graphService;
-        } else {
-            /* Create a conventional GraphService that loads graphs from disk. */
-            GraphServiceImpl graphService = new GraphServiceImpl();
-            if (params.graphDirectory != null) {
-                graphService.setPath(params.graphDirectory);
-            }
-            if (params.routerIds.size() > 0) {
-                graphService.setDefaultRouterId(params.routerIds.get(0));
-                graphService.autoRegister = params.routerIds;
-            }
-            graphService.startup();
-            this.graphService = graphService;
+            graphScanner.autoRegister = params.routerIds;
+            graphScanner.startup();
         }
     }
 
@@ -274,7 +269,10 @@ public class OTPConfigurator {
             return visualizer;
         } else return null;
     }
-
+    
+    /**
+     * Represents the different types of input files for a graph build.
+     */
     private static enum InputFileType {
         GTFS, OSM, CONFIG, OTHER, SERVICEMAP, SERVICEMAP_ACCESSIBILITY, JORE_ACCESSIBILITY, JORE_STOP;
 
@@ -299,5 +297,4 @@ public class OTPConfigurator {
             return OTHER;
         }
     }
-
 }

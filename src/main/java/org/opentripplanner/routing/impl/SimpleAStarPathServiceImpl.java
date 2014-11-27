@@ -20,6 +20,7 @@ import org.opentripplanner.routing.pathparser.NoThruTrafficPathParser;
 import org.opentripplanner.routing.pathparser.PathParser;
 import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
+import org.opentripplanner.routing.services.SPTService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.slf4j.Logger;
@@ -35,10 +36,13 @@ public class SimpleAStarPathServiceImpl implements PathService {
 
     private GraphService graphService;
 
-    private Class sptServiceTemplate;
+    private SPTServiceFactory sptServiceFactory;
 
-    public SimpleAStarPathServiceImpl(GraphService graphService) {
+    private SPTVisitor sptVisitor = null;
+
+    public SimpleAStarPathServiceImpl(GraphService graphService, SPTServiceFactory sptServiceFactory) {
         this.graphService = graphService;
+        this.sptServiceFactory = sptServiceFactory;
     }
 
     /**
@@ -60,7 +64,8 @@ public class SimpleAStarPathServiceImpl implements PathService {
     @Override
     public List<GraphPath> getPaths(RoutingRequest options) {
 
-        GenericAStar sptService = new GenericAStar();
+
+        GenericAStar sptService = (GenericAStar) sptServiceFactory.instantiate();
 
         ArrayList<GraphPath> paths = new ArrayList<>();
 
@@ -132,5 +137,9 @@ public class SimpleAStarPathServiceImpl implements PathService {
         // We order the list of returned paths by the time of arrival or departure (not path duration)
         Collections.sort(paths, new PathComparator(options.arriveBy));
         return paths;
+    }
+
+    public void setSPTVisitor(SPTVisitor sptVisitor){
+        this.sptVisitor = sptVisitor;
     }
 }
