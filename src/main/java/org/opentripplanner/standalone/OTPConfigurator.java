@@ -23,6 +23,7 @@ import java.util.zip.ZipFile;
 import org.opentripplanner.graph_builder.GraphBuilderTask;
 import org.opentripplanner.graph_builder.impl.*;
 import org.opentripplanner.graph_builder.impl.ned.ElevationGraphBuilderImpl;
+import org.opentripplanner.graph_builder.impl.ned.GeotiffGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.ned.NEDGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.impl.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl;
@@ -126,6 +127,7 @@ public class OTPConfigurator {
         File servicemapAccessibilityFile = null;
         File joreAccessibilityFile = null;
         File joreStopFile = null;
+        File demFile = null;
         /* For now this is adding files from all directories listed, rather than building multiple graphs. */
         for (File dir : params.build) {
             LOG.info("Searching for graph builder input files in {}", dir);
@@ -159,6 +161,14 @@ public class OTPConfigurator {
                 case JORE_STOP:
                     LOG.info("Found JORE stop file {}", file);
                     joreStopFile = file;
+                    break;
+                case DEM:
+                    if (!params.elevation && demFile == null) {
+                        LOG.info("Found DEM file {}", file);
+                        demFile = file;
+                    } else {
+                        LOG.info("Skipping DEM file {}", file);
+                    }
                     break;
                 case CONFIG:
                     if (!params.noEmbedConfig) {
@@ -249,6 +259,10 @@ public class OTPConfigurator {
             ElevationGridCoverageFactory gcf = new NEDGridCoverageFactoryImpl(cacheDirectory);
             GraphBuilder elevationBuilder = new ElevationGraphBuilderImpl(gcf);
             graphBuilder.addGraphBuilder(elevationBuilder);
+        } else  if (demFile != null) {
+            ElevationGridCoverageFactory gcf = new GeotiffGridCoverageFactoryImpl(demFile);
+            GraphBuilder elevationBuilder = new ElevationGraphBuilderImpl(gcf);
+            graphBuilder.addGraphBuilder(elevationBuilder);
         }
         graphBuilder.serializeGraph = ( ! params.inMemory ) || params.preFlight;
         return graphBuilder;
@@ -274,7 +288,7 @@ public class OTPConfigurator {
      * Represents the different types of input files for a graph build.
      */
     private static enum InputFileType {
-        GTFS, OSM, CONFIG, OTHER, SERVICEMAP, SERVICEMAP_ACCESSIBILITY, JORE_ACCESSIBILITY, JORE_STOP;
+        GTFS, OSM, DEM, CONFIG, OTHER, SERVICEMAP, SERVICEMAP_ACCESSIBILITY, JORE_ACCESSIBILITY, JORE_STOP;
 
         public static InputFileType forFile(File file) {
             String name = file.getName();
@@ -289,6 +303,7 @@ public class OTPConfigurator {
             if (name.endsWith(".pbf")) return OSM;
             if (name.endsWith(".osm")) return OSM;
             if (name.endsWith(".osm.xml")) return OSM;
+            if (name.endsWith(".tif")) return DEM;
             if (name.equals("Embed.properties")) return CONFIG;
             if (name.equals("unit.json")) return SERVICEMAP;
             if (name.equals("accessibility_property.json")) return SERVICEMAP_ACCESSIBILITY;
