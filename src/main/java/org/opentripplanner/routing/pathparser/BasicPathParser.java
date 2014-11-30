@@ -107,7 +107,7 @@ public class BasicPathParser extends PathParser {
         if (v instanceof OffboardVertex)
             return STATION;
         if (v instanceof BikeRentalStationVertex || v instanceof ParkAndRideVertex
-                || v instanceof BikeParkVertex)
+                || v instanceof BikeParkVertex || v instanceof PoiVertex)
             return StreetEdge.CLASS_OTHERPATH;
         else
             throw new RuntimeException("failed to tokenize path");
