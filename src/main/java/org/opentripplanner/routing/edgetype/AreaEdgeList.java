@@ -138,9 +138,11 @@ public class AreaEdgeList implements Serializable {
 
             AreaEdge forward = new AreaEdge(from, to, line, area.getName(), length,
                     area.getPermission(), false, this);
+            forward.setHasBogusName(area.hasBogusName());
             forward.setStreetClass(area.getStreetClass());
             AreaEdge backward = new AreaEdge(to, from, (LineString) line.reverse(), area.getName(),
                     length, area.getPermission(), true, this);
+            backward.setHasBogusName(area.hasBogusName());
             backward.setStreetClass(area.getStreetClass());
             edges.add(forward);
             edges.add(backward);

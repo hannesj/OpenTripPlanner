@@ -31,6 +31,8 @@ public class NamedArea implements Serializable {
 
     private String name;
 
+    private boolean bogusName;
+
     private double bicycleSafetyMultiplier;
 
     private int streetClass;
@@ -75,5 +77,13 @@ public class NamedArea implements Serializable {
 
     public void setPermission(StreetTraversalPermission permission) {
         this.permission = permission;
+    }
+
+    public boolean hasBogusName() {
+        return bogusName;
+    }
+
+    public void setHasBogusName(boolean bogusName) {
+        this.bogusName = bogusName;
     }
 }

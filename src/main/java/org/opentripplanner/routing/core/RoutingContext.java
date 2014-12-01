@@ -290,6 +290,7 @@ public class RoutingContext implements Cloneable {
 
             for (StreetEdge pse : overlap) {
                 PartialStreetEdge ppse = makePartialEdgeAlong(pse, fromStreetVertex, toStreetVertex);
+                ppse.setHasBogusName(pse.hasBogusName());
                 // Register this edge-fragment as a temporary edge so it will be assigned a routing context and cleaned up.
                 // It's connecting the from and to vertices so it could be placed in either vertex's temp edge list.
                 ((StreetLocation)fromVertex).getExtra().add(ppse);

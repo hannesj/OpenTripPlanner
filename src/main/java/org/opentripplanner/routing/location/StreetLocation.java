@@ -220,11 +220,13 @@ public class StreetLocation extends StreetVertex {
                 street.getElevationProfile(), 0, lengthIn), false);
         newLeft.setNoThruTraffic(street.isNoThruTraffic());
         newLeft.setStreetClass(street.getStreetClass());
+        newLeft.setHasBogusName(street.hasBogusName());
 
         newRight.setElevationProfile(ElevationUtils.getPartialElevationProfile(
                 street.getElevationProfile(), lengthIn, lengthIn + lengthOut), false);
         newRight.setStreetClass(street.getStreetClass());
         newRight.setNoThruTraffic(street.isNoThruTraffic());
+        newRight.setHasBogusName(street.hasBogusName());
         
         // Copy turn restrictions onto the outgoing half-edge.
         for (TurnRestriction turnRestriction : graph.getTurnRestrictions(street)) {

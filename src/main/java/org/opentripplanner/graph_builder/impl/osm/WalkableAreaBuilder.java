@@ -492,6 +492,8 @@ public class WalkableAreaBuilder {
             String name = __handler.getNameForWay(areaEntity, id);
             namedArea.setName(name);
 
+            namedArea.setHasBogusName(!areaEntity.hasTag("name"));
+
             WayProperties wayData = wayPropertySet.getDataForWay(areaEntity);
             Double safety = wayData.getSafetyFeatures().first;
             namedArea.setBicycleSafetyMultiplier(safety);
