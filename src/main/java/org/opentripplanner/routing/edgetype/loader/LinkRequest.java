@@ -364,7 +364,7 @@ public class LinkRequest {
         modes.setMode(TraverseMode.WALK, true);
         RoutingRequest request = new RoutingRequest(modes);
         Collection<StreetVertex> nearbyStreetVertices = getNearbyStreetVertices(v, nearbyEdges,
-                request, true);
+                request, false);
         if (nearbyStreetVertices == null) {
             result = false;
         } else {

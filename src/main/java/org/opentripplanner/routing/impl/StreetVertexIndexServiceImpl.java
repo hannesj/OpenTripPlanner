@@ -358,7 +358,7 @@ public class StreetVertexIndexServiceImpl implements StreetVertexIndexService {
                     extraStreets);
         }
 
-        double envelopeGrowthAmount = 0.0004; // ~= 40 meters
+        double envelopeGrowthAmount = 0.001; // ~= 100 meters
         double radius = 0;
         CandidateEdgeBundle candidateEdges = new CandidateEdgeBundle();
         while (candidateEdges.size() == 0) {
@@ -413,11 +413,11 @@ public class StreetVertexIndexServiceImpl implements StreetVertexIndexService {
         CandidateEdgeBundle best = null;
         for (CandidateEdgeBundle bundle : bundles) {
             if (best == null || bundle.best.score < best.best.score) {
-//                if (possibleTransitLinksOnly) {
-//                    // assuming all platforms are tagged when they are not car streets... #1077
-//                    if (!(bundle.allowsCars() || bundle.isPlatform()))
-//                        continue;
-//                }
+                if (possibleTransitLinksOnly) {
+                    // assuming all platforms are tagged when they are not car streets... #1077
+                    if (!(bundle.allowsCars() || bundle.isPlatform()))
+                        continue;
+                }
                 best = bundle;
             }
         }
