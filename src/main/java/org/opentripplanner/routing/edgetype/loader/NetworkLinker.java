@@ -139,6 +139,7 @@ public class NetworkLinker {
             if (!networkLinkerLibrary.connectVertexToStreets(bprv).getResult()) {
                 LOG.warn(graph.addBuilderAnnotation(new BikeParkUnlinked(bprv)));
             }
+        }
 
         LOG.debug("Linking POIs...");
         for (PoiVertex v : Iterables.filter(vertices, PoiVertex.class)) {
