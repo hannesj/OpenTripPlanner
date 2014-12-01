@@ -33,7 +33,6 @@ import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.PoiLinkEdge;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
 import org.opentripplanner.routing.edgetype.StreetWithElevationEdge;
 import org.opentripplanner.routing.graph.Edge;
@@ -41,7 +40,6 @@ import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.impl.CandidateEdgeBundle;
 import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.PoiVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.routing.vertextype.TransitVertex;
@@ -270,7 +268,6 @@ public class LinkRequest {
             ((AreaEdge) e1).getArea().addVertex(e1midpoint, linker.graph);
 
         }
-
         addEdges(forward1, forward2);
 
         StreetWithElevationEdge backward1 = null;
