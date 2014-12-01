@@ -22,7 +22,7 @@ public class CandidateEdge {
 
     // Massive preference for streets that allow cars, also applied to platforms for vehicles of
     // the specified mode. 
-    private static final double PEDESTRIAN_PREFERENCE = 50;
+    private static final double CAR_PREFERENCE = 100;
 
     private static final double MAX_DIRECTION_DIFFERENCE = 180.0;
 
@@ -219,22 +219,21 @@ public class CandidateEdge {
             // this a hack, but there's not really a better way to do it
             myScore /= PLATFORM_PREFERENCE;
         }
-
         if (edge.getName().contains("sidewalk")) {
             // this is a hack, but there's not really a better way to do it
             myScore /= SIDEWALK_PREFERENCE;
         }
         // apply strong preference to car edges and to platforms for the specified modes 
         if (modes.getWalk() && (edge.getPermission().allows(StreetTraversalPermission.PEDESTRIAN))){
-            myScore -= PEDESTRIAN_PREFERENCE;
+            myScore -= CAR_PREFERENCE;
         }
 
         if (modes.getBicycle() && (edge.getPermission().allows(StreetTraversalPermission.BICYCLE))){
-            myScore -= PEDESTRIAN_PREFERENCE;
+            myScore -= CAR_PREFERENCE;
         }
 
         if (modes.getDriving() && (edge.getPermission().allows(StreetTraversalPermission.CAR))){
-            myScore -= PEDESTRIAN_PREFERENCE;
+            myScore -= CAR_PREFERENCE;
         }
 
         // Consider the heading in the score if it is available.
