@@ -266,8 +266,8 @@ public class LinkRequest {
                 e1.getPermission(), e1.isBack());
         if (e1 instanceof AreaEdge) {
             ((AreaEdge) e1).getArea().addVertex(e1midpoint, linker.graph);
-
         }
+        
         addEdges(forward1, forward2);
 
         StreetWithElevationEdge backward1 = null;
