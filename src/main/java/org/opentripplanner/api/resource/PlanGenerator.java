@@ -42,14 +42,7 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.ServiceDay;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.AreaEdge;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.ElevatorAlightEdge;
-import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.OnboardEdge;
-import org.opentripplanner.routing.edgetype.PatternEdge;
-import org.opentripplanner.routing.edgetype.PatternInterlineDwell;
-import org.opentripplanner.routing.edgetype.TripPattern;
+import org.opentripplanner.routing.edgetype.*;
 import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.routing.error.TrivialPathException;
 import org.opentripplanner.routing.error.VertexNotFoundException;
@@ -69,7 +62,6 @@ import org.slf4j.LoggerFactory;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
-import org.opentripplanner.routing.edgetype.PathwayEdge;
 
 public class PlanGenerator {
 
@@ -166,8 +158,44 @@ public class PlanGenerator {
         Place from = new Place(tripStartVertex.getX(), tripStartVertex.getY(), startName);
         Place to = new Place(tripEndVertex.getX(), tripEndVertex.getY(), endName);
 
-        from.bogusName = tripStartEdge.hasBogusName();
-        to.bogusName = tripEndEdge.hasBogusName();
+        if (tripStartEdge instanceof FreeEdge){
+            boolean bogusName = true;
+            for(Edge e : tripStartEdge.getFromVertex().getOutgoingStreetEdges()) {
+                if (!e.hasBogusName()){
+                    bogusName = false;
+                    break;
+                }
+            }
+            for(Edge e : tripStartEdge.getToVertex().getOutgoingStreetEdges()) {
+                if (!e.hasBogusName()){
+                    bogusName = false;
+                    break;
+                }
+            }
+            from.bogusName = bogusName;
+        } else {
+            from.bogusName = tripStartEdge.hasBogusName();
+        }
+
+        if (tripEndEdge instanceof FreeEdge){
+            boolean bogusName = true;
+            for(Edge e : tripEndEdge.getFromVertex().getOutgoingStreetEdges()) {
+                if (!e.hasBogusName()){
+                    bogusName = false;
+                    break;
+                }
+            }
+            for(Edge e : tripEndEdge.getToVertex().getOutgoingStreetEdges()) {
+                if (!e.hasBogusName()){
+                    bogusName = false;
+                    break;
+                }
+            }
+            to.bogusName = bogusName;
+        } else {
+            to.bogusName = tripEndEdge.hasBogusName();
+        }
+
         if (tripStartEdge.translatedName != null){
             from.translatedName = tripStartEdge.translatedName.translations;
         }
@@ -721,7 +749,27 @@ public class PlanGenerator {
 
         if (endOfLeg) edge = state.getBackEdge();
 
-        place.bogusName = edge.hasBogusName();
+
+        if (edge instanceof FreeEdge){
+            boolean bogusName = true;
+            for(Edge e : edge.getFromVertex().getOutgoingStreetEdges()) {
+                if (!e.hasBogusName()){
+                    bogusName = false;
+                    break;
+                }
+            }
+            for(Edge e : edge.getToVertex().getOutgoingStreetEdges()) {
+                if (!e.hasBogusName()){
+                    bogusName = false;
+                    break;
+                }
+            }
+            place.bogusName = bogusName;
+        } else {
+            place.bogusName = edge.hasBogusName();
+        }
+
+
 
         if (edge.translatedName != null)
             place.translatedName = edge.translatedName.translations;
