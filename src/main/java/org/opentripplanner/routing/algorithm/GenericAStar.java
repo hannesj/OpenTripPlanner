@@ -272,6 +272,7 @@ public class GenericAStar implements SPTService { // maybe this should be wrappe
             // Don't search too far past the most recently found accepted path/state
             if (runState.foundPathWeight != null &&
                 runState.u.getWeight() > runState.foundPathWeight * OVERSEARCH_MULTIPLIER ) {
+                runState.options.rctx.aborted = true; // signal search cancellation up to higher stack frames
                 break;
             }
             if (runState.terminationStrategy != null) {
