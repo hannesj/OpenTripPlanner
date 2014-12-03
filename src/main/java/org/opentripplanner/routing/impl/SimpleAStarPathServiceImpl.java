@@ -125,7 +125,7 @@ public class SimpleAStarPathServiceImpl implements PathService {
                 }
             }
             LOG.debug("{} / {} itineraries", paths.size(), options.numItineraries);
-            if (options.rctx.aborted || System.currentTimeMillis() > firstPathTimeoutAbsolute || paths.size() == 0) {
+            if (options.rctx.aborted || System.currentTimeMillis() > timeout || paths.size() == 0) {
                 // search was cleanly aborted, probably due to a timeout. 
                 // There may be useful paths, but we should stop retrying.
                 break;
