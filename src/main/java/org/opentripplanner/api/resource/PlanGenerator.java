@@ -13,13 +13,9 @@
 
 package org.opentripplanner.api.resource;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Set;
-import java.util.TimeZone;
+import java.util.*;
 
+import org.apache.lucene.util.IntroSorter;
 import org.onebusaway.gtfs.model.Agency;
 import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
@@ -158,7 +154,7 @@ public class PlanGenerator {
         Place from = new Place(tripStartVertex.getX(), tripStartVertex.getY(), startName);
         Place to = new Place(tripEndVertex.getX(), tripEndVertex.getY(), endName);
 
-        if (tripStartEdge instanceof FreeEdge){
+        if (tripStartEdge instanceof FreeEdge && !(tripStartVertex instanceof PoiVertex)){
             boolean bogusName = true;
             for(Edge e : tripStartEdge.getFromVertex().getOutgoingStreetEdges()) {
                 if (!e.hasBogusName()){
@@ -177,7 +173,7 @@ public class PlanGenerator {
             from.bogusName = tripStartEdge.hasBogusName();
         }
 
-        if (tripEndEdge instanceof FreeEdge){
+        if (tripEndEdge instanceof FreeEdge && !(tripEndVertex instanceof PoiVertex)){
             boolean bogusName = true;
             for(Edge e : tripEndEdge.getFromVertex().getOutgoingStreetEdges()) {
                 if (!e.hasBogusName()){
@@ -749,8 +745,9 @@ public class PlanGenerator {
 
         if (endOfLeg) edge = state.getBackEdge();
 
+        if (vertex instanceof IntersectionVertex)
 
-        if (edge instanceof FreeEdge){
+        if (edge instanceof FreeEdge && !(vertex instanceof PoiVertex)){
             boolean bogusName = true;
             for(Edge e : edge.getFromVertex().getOutgoingStreetEdges()) {
                 if (!e.hasBogusName()){
@@ -765,11 +762,46 @@ public class PlanGenerator {
                 }
             }
             place.bogusName = bogusName;
+        } else if (vertex instanceof IntersectionVertex) {
+            // generate names for corners when no name was given
+            Locale locale;
+            if (state.getOptions() == null) {
+                locale = new Locale("en");
+            } else {
+                locale = state.getOptions().locale;
+            }
+            Set<String> uniqueNameSet = new HashSet<String>();
+            for (Edge e : vertex.getOutgoing()) {
+                if (e instanceof StreetEdge) {
+                    if (e.hasBogusName()){
+                        continue;
+                    }
+                    String s = null;
+                    if (e.translatedName != null) {
+                        s = e.translatedName.getTranslation(locale.getLanguage());
+                    }
+                    if (s == null) {
+                        s = e.getName();
+                    }
+                    uniqueNameSet.add(s);
+                }
+            }
+            List<String> uniqueNames = new ArrayList<String>(uniqueNameSet);
+            ResourceBundle resources = ResourceBundle.getBundle("internals", locale);
+            String fmt = resources.getString("corner");
+            if (uniqueNames.size() > 1) {
+                place.name = String.format(fmt, uniqueNames.get(0), uniqueNames.get(1));
+                place.bogusName = false;
+            } else if (uniqueNames.size() == 1) {
+                place.name = uniqueNames.get(0);
+                place.bogusName = false;
+            } else {
+                place.name = resources.getString("unnamedStreet");
+                place.bogusName = true;
+            }
         } else {
             place.bogusName = edge.hasBogusName();
         }
-
-
 
         if (edge.translatedName != null)
             place.translatedName = edge.translatedName.translations;
