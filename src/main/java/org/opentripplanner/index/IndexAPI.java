@@ -40,6 +40,8 @@ import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.graph_builder.impl.NearbyStopFinder;
+import org.opentripplanner.graph_builder.impl.NearbyStopFinder.StopAtDistance;
 import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.index.model.PatternDetail;
 import org.opentripplanner.index.model.PatternShort;
@@ -181,13 +183,11 @@ public class IndexAPI {
            if (radius > MAX_STOP_SEARCH_RADIUS){
                radius = MAX_STOP_SEARCH_RADIUS;
            }
-           List<StopShort> stops = Lists.newArrayList(); 
+           List<StopShort> stops = Lists.newArrayList();
            Coordinate coord = new Coordinate(lon, lat);
-           for (TransitStop stopVertex : streetIndex.getNearbyTransitStops(
-                    new Coordinate(lon, lat), radius)) {
-               double distance = distanceLibrary.fastDistance(stopVertex.getCoordinate(), coord);
-               if (distance < radius) {
-                   stops.add(new StopShort(stopVertex.getStop(), (int) distance));
+           for (StopAtDistance stop : new NearbyStopFinder(index.graph, radius).findNearbyStops(coord)) {
+               if (stop.dist < radius) {
+                   stops.add(new StopShort(stop.tstop.getStop(), (int) stop.dist));
                }
            }
            return Response.status(Status.OK).entity(stops).build();

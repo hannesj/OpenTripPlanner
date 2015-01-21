@@ -11,14 +11,17 @@ import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.PackedCoordinateSequence;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.EarliestArrivalSPTService;
 import org.opentripplanner.routing.automata.DFA;
 import org.opentripplanner.routing.automata.Nonterminal;
+import org.opentripplanner.routing.core.RoutingContext;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
+import org.opentripplanner.routing.edgetype.TemporaryFreeEdge;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -34,8 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static org.opentripplanner.routing.automata.Nonterminal.seq;
-import static org.opentripplanner.routing.automata.Nonterminal.star;
+import static org.opentripplanner.routing.automata.Nonterminal.*;
 
 /**
  * These library functions are used by the streetless and streetful stop linkers, and in profile transfer generation.
@@ -128,16 +130,33 @@ public class NearbyStopFinder {
         return useStreets ? findNearbyStopsViaStreets(vertex) : findNearbyStopsEuclidean(vertex);
     }
 
+    public List<StopAtDistance> findNearbyStops (Coordinate coordinate) {
+        return useStreets ? findNearbyStopsViaStreets(coordinate) : findNearbyStopsEuclidean(coordinate);
+    }
+
 
     /**
      * Return all stops within a certain radius of the given vertex, using network distance along streets.
      * If the origin vertex is a TransitStop, the result will include it.
      */
     public List<StopAtDistance> findNearbyStopsViaStreets (Vertex originVertex) {
+        return findNearbyStopsViaStreets(originVertex, null);
+    }
 
+    public List<StopAtDistance> findNearbyStopsViaStreets(Coordinate coordinate) {
+        return findNearbyStopsViaStreets(null, coordinate);
+    }
+
+    private List<StopAtDistance> findNearbyStopsViaStreets(Vertex originVertex, Coordinate coordinate) {
         RoutingRequest routingRequest = new RoutingRequest(TraverseMode.WALK);
         routingRequest.clampInitialWait = (0L);
-        routingRequest.setRoutingContext(graph, originVertex, null);
+        if (originVertex != null) {
+            routingRequest.setRoutingContext(graph, originVertex, null);
+        } else if (coordinate != null) {
+            routingRequest.from = new GenericLocation(coordinate);
+            routingRequest.batch = true;
+            routingRequest.rctx = new RoutingContext(routingRequest, graph);
+        }
         routingRequest.rctx.pathParsers = parsers;
         ShortestPathTree spt = earliestArrivalSPTService.getShortestPathTree(routingRequest);
 
@@ -166,8 +185,11 @@ public class NearbyStopFinder {
      * If the origin vertex is a TransitStop, the result will include it.
      */
     public List<StopAtDistance> findNearbyStopsEuclidean (Vertex originVertex) {
+        return findNearbyStopsEuclidean(originVertex.getCoordinate());
+    }
+
+    private List<StopAtDistance> findNearbyStopsEuclidean(Coordinate c0) {
         List<StopAtDistance> stopsFound = Lists.newArrayList();
-        Coordinate c0 = originVertex.getCoordinate();
         for (TransitStop ts1 : streetIndex.getNearbyTransitStops(c0, radius)) {
             double distance = distanceLibrary.distance(c0, ts1.getCoordinate());
             if (distance < radius) {
@@ -211,11 +233,13 @@ public class NearbyStopFinder {
         private static final int OTHER  = 0;
         private static final int STREET = 1;
         private static final int LINK   = 2;
+        private static final int TEMP_LINK = 3;
         private final org.opentripplanner.routing.automata.DFA DFA;
 
         TransferFinderParser () {
             Nonterminal streets = star(STREET);
-            Nonterminal itinerary = seq(LINK, streets, LINK);
+            Nonterminal start = optional(choice(LINK, TEMP_LINK));
+            Nonterminal itinerary = seq(start, streets, LINK);
             DFA = itinerary.toDFA().minimize();
         }
 
@@ -224,6 +248,7 @@ public class NearbyStopFinder {
             Edge edge = state.getBackEdge();
             if (edge instanceof StreetEdge) return STREET;
             if (edge instanceof StreetTransitLink) return LINK;
+            if (edge instanceof TemporaryFreeEdge) return TEMP_LINK;
             return OTHER;
         }
 
