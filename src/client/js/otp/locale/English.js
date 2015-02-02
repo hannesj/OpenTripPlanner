@@ -26,7 +26,7 @@ otp.locale.English = {
         name: 'English',
         //FALSE-imperial units are used
         //TRUE-Metric units are used
-        metric : false, 
+        metric : true, 
         //Name of localization file (*.po file) in src/client/i18n
         locale_short : "en",
         //Name of datepicker localization in
@@ -66,10 +66,10 @@ otp.locale.English = {
 
     time:
     {
-        format         : "MMM Do YYYY, h:mma", //moment.js
-        date_format    : "MM/DD/YYYY", //momentjs must be same as date_picker format which is by default: mm/dd/yy
-        time_format    : "h:mma", //momentjs
-        time_format_picker : "hh:mmtt", //http://trentrichardson.com/examples/timepicker/#tp-formatting
+        format         : "DD-MM-YYYY, hh:mm", //moment.js
+        date_format    : "DD-MM-YYYY", //momentjs must be same as date_picker format which is by default: mm/dd/yy
+        time_format    : "HH:mm", //momentjs
+        time_format_picker : "HH:mmtt", //http://trentrichardson.com/examples/timepicker/#tp-formatting
     },
 
     CLASS_NAME : "otp.locale.English"

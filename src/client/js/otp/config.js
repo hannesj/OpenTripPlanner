@@ -5,7 +5,7 @@ otp.config = {
     //If enabled it shows inspector layers overlays which can be used for Graph
     //debugging
     //Can be also enabled in URL parameters as ?debug_layers=true
-    debug_layers: false,
+    debug_layers: true,
 
     //This is default locale when wanted locale isn't found
     //Locale language is set based on wanted language in url >
@@ -68,9 +68,9 @@ otp.config = {
      
     baseLayers: [
         {
-            name: 'MapQuest OSM',
-            tileUrl: 'http://{s}.mqcdn.com/tiles/1.0.0/osm/{z}/{x}/{y}.png',
-            subdomains : ['otile1','otile2','otile3','otile4'],
+            name: 'Mapbox OSM',
+            tileUrl: 'http://{s}.tiles.mapbox.com/v4/hannes.ga3ddbm4/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoiaGFubmVzIiwiYSI6IkhHbWdpSjgifQ.zZUfefvAwRczzYn5DeqvjQ',
+            subdomains : ['a','b'],
             attribution : 'Data, imagery and map information provided by <a href="http://open.mapquest.com" target="_blank">MapQuest</a>, <a href="http://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> and contributors.'
         },
         {
@@ -94,14 +94,14 @@ otp.config = {
     // maxZoom : 20,
     
     /* Whether the map should be moved to contain the full itinerary when a result is received. */
-    zoomToFitResults    : false,
+    zoomToFitResults    : true,
 
     /**
      * Site name / description / branding display options
      */
 
-    siteName            : "My OTP Instance",
-    siteDescription     : "An OpenTripPlanner deployment.",
+    siteName            : "Matka-aika.com reittiopas",
+    siteDescription     : "OTP-demo",
     logoGraphic         : 'images/otp_logo_darkbg_40px.png',
     // bikeshareName    : "",
     //Enable this if you want to show frontend language chooser
@@ -110,7 +110,7 @@ otp.config = {
     showLogo            : true,
     showTitle           : true,
     showModuleSelector  : true,
-    metric              : false,
+    metric              : true,
 
 
     /**
@@ -129,7 +129,7 @@ otp.config = {
         {
             id : 'planner',
             className : 'otp.modules.multimodal.MultimodalPlannerModule',
-            defaultBaseLayer : 'MapQuest OSM',
+            defaultBaseLayer : 'Mapbox OSM',
             isDefault: true
         },
         {
@@ -180,8 +180,8 @@ otp.config = {
      * Formats to use for date and time displays, expressed as ISO-8601 strings.
      */    
      
-    timeFormat  : "h:mma",
-    dateFormat  : "MMM Do YYYY"
+    timeFormat  : "HH:mm",
+    dateFormat  : "DD-MM-YYYY"
 
 };
 var options = {
