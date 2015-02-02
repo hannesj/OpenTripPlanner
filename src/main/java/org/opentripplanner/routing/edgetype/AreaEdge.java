@@ -19,7 +19,7 @@ import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.util.I18NString;
 import org.opentripplanner.util.NonLocalizedString;
 
-public class AreaEdge extends StreetWithElevationEdge {
+public class AreaEdge extends StreetWithElevationEdge implements EdgeWithCleanup {
     private static final long serialVersionUID = 6761687673982054612L;
     private AreaEdgeList area;
 
