@@ -17,9 +17,9 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 import org.opentripplanner.common.model.P2;
-import org.opentripplanner.graph_builder.impl.osm.OSMFilter;
-import org.opentripplanner.graph_builder.impl.osm.WayProperties;
-import org.opentripplanner.graph_builder.impl.osm.WayPropertySet;
+import org.opentripplanner.graph_builder.module.osm.OSMFilter;
+import org.opentripplanner.graph_builder.module.osm.WayProperties;
+import org.opentripplanner.graph_builder.module.osm.WayPropertySet;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 
 public class OSMWayTest {

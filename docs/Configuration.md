@@ -69,3 +69,52 @@ they become available. OTP can use both approaches.
 
 
 ### Vehicle Positions
+
+
+```JSON
+{
+    // Routing defaults are any public field or setter in org.opentripplanner.routing.core.RoutingRequest
+    routingDefaults: {
+        numItineraries: 6,
+        walkSpeed: 2.0,
+        stairsReluctance: 4.0,
+        carDropoffTime: 240
+    },
+
+    updaters: [
+        // GTFS-RT service alerts (polling)
+        {
+            type: "real-time-alerts",
+            frequencySec: 30,
+            url: "http://developer.trimet.org/ws/V1/FeedSpecAlerts/appID/0123456789ABCDEF",
+            defaultAgencyId: "TriMet"
+        },
+
+        // Bike rental updater for Citybikes (polling)
+        {
+            type: "bike-rental",
+            frequencySec: 300,
+            sourceType: "city-bikes",
+            url: "http://host.domain.tld"
+        },
+
+        // Bike parking availability
+        // bp.type=bike-park
+
+        // Stop Time Updates (polling GTFS-RT TripUpdates)
+        {
+            type: "stop-time-updater",
+            frequencySec: 60,
+            // this is either http or file... shouldn't it default to http or guess from the presence of a URL?
+            sourceType: "gtfs-http",
+            url: "http://developer.trimet.org/ws/V1/TripUpdate/appID/0123456789ABCDEF",
+            defaultAgencyId: "TriMet"
+        },
+
+        // Stop Time Updates (streaming differential GTFS-RT TripUpdates)
+        {
+            type: "websocket-gtfs-rt-updater"
+        }
+    ]
+}
+```
