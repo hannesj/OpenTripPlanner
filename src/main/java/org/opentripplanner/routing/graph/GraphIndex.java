@@ -302,7 +302,7 @@ public class GraphIndex {
      * Fetches two departures for each pattern during the next 24 hours as default
      */
     public Collection<StopTimesInPattern> stopTimesForStop(Stop stop) {
-        return stopTimesForStop(stop, System.currentTimeMillis()/1000, 24 * 60 * 60, 2);
+        return stopTimesForStop(stop, System.currentTimeMillis()/1000, 24 * 60 * 60, 2, detail);
     }
 
     /**
@@ -317,9 +317,10 @@ public class GraphIndex {
      * @param startTime Start time for the search. Seconds from UNIX epoch
      * @param timeRange Searches forward for timeRange seconds from startTime
      * @param numberOfDepartures Number of departures to fetch per pattern
+     * @param detail
      * @return
      */
-    public List<StopTimesInPattern> stopTimesForStop(Stop stop, long startTime, int timeRange, int numberOfDepartures) {
+    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, int timeRange, int numberOfDepartures, boolean detail) {
 
         if (startTime == 0) {
             startTime = System.currentTimeMillis() / 1000;
@@ -363,7 +364,10 @@ public class GraphIndex {
                             if (!sd.serviceRunning(t.serviceCode)) continue;
                             if (t.getDepartureTime(sidx) != -1 &&
                                     t.getDepartureTime(sidx) >= secondsSinceMidnight) {
-                                pq.insertWithOverflow(new TripTimeShort(t, sidx, stop, sd));
+                                TripTimeShort timeShort = new TripTimeShort(t, sidx, stop, sd);
+                                timeShort.pickup = pattern.getBoardType(sidx);
+                                timeShort.dropoff = pattern.getAlightType(sidx);
+                                pq.insertWithOverflow(timeShort);
                             }
                         }
 
@@ -387,7 +391,7 @@ public class GraphIndex {
             }
 
             if (pq.size() != 0) {
-                StopTimesInPattern stopTimes = new StopTimesInPattern(pattern);
+                StopTimesInPattern stopTimes = new StopTimesInPattern(pattern, detail);
                 while (pq.size() != 0) {
                     stopTimes.times.add(0, pq.pop());
                 }
@@ -403,9 +407,10 @@ public class GraphIndex {
      *
      * @param stop Stop object to perform the search for
      * @param serviceDate Return all departures for the specified date
+     * @param detail
      * @return
      */
-    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, ServiceDate serviceDate) {
+    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, ServiceDate serviceDate, boolean detail) {
         List<StopTimesInPattern> ret = new ArrayList<>();
         TimetableSnapshot snapshot = null;
         if (graph.timetableSnapshotSource != null) {
@@ -413,7 +418,7 @@ public class GraphIndex {
         }
         Collection<TripPattern> patterns = patternsForStop.get(stop);
         for (TripPattern pattern : patterns) {
-            StopTimesInPattern stopTimes = new StopTimesInPattern(pattern);
+            StopTimesInPattern stopTimes = new StopTimesInPattern(pattern, detail);
             Timetable tt;
             if (snapshot != null){
                 tt = snapshot.resolve(pattern, serviceDate);
@@ -426,7 +431,10 @@ public class GraphIndex {
                 if (currStop == stop) {
                     for (TripTimes t : tt.tripTimes) {
                         if (!sd.serviceRunning(t.serviceCode)) continue;
-                        stopTimes.times.add(new TripTimeShort(t, sidx, stop, sd));
+                        TripTimeShort timeShort = new TripTimeShort(t, sidx, stop, sd);
+                        timeShort.pickup = pattern.getBoardType(sidx);
+                        timeShort.dropoff = pattern.getAlightType(sidx);
+                        stopTimes.times.add(timeShort);
                     }
                 }
                 sidx++;
