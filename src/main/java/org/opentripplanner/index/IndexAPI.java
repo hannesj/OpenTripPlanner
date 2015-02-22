@@ -40,8 +40,8 @@ import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.common.geometry.DistanceLibrary;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.graph_builder.impl.NearbyStopFinder;
-import org.opentripplanner.graph_builder.impl.NearbyStopFinder.StopAtDistance;
+import org.opentripplanner.graph_builder.module.NearbyStopFinder;
+import org.opentripplanner.graph_builder.module.NearbyStopFinder.StopAtDistance;
 import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.index.model.PatternDetail;
 import org.opentripplanner.index.model.PatternShort;
@@ -53,7 +53,6 @@ import org.opentripplanner.index.model.TripShort;
 import org.opentripplanner.index.model.TripTimeShort;
 import org.opentripplanner.profile.StopCluster;
 import org.opentripplanner.routing.edgetype.SimpleTransfer;
-import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.edgetype.Timetable;
 import org.opentripplanner.routing.graph.Edge;
@@ -236,7 +235,7 @@ public class IndexAPI {
     public Response getStoptimesForStop (@PathParam("stopId") String stopIdString) {
         Stop stop = index.stopForId.get(GtfsLibrary.convertIdFromString(stopIdString));
         if (stop == null) return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
-        return Response.status(Status.OK).entity(index.stopTimesForStop(stop)).build();
+        return Response.status(Status.OK).entity(index.stopTimesForStop(stop, detail)).build();
     }
 
     /** Return upcoming vehicle arrival/departure times at the given stop. */
@@ -254,7 +253,7 @@ public class IndexAPI {
             return Response.status(Status.BAD_REQUEST).entity(MSG_400).build();
         }
 
-        List<StopTimesInPattern> ret = index.getStopTimesForStop(stop, sd);
+        List<StopTimesInPattern> ret = index.getStopTimesForStop(stop, sd, detail);
         return Response.status(Status.OK).entity(ret).build();
     }
     

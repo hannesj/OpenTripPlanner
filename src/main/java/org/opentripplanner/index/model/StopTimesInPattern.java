@@ -14,8 +14,8 @@ public class StopTimesInPattern {
     public PatternShort pattern;
     public List<TripTimeShort> times = Lists.newArrayList();
 
-    public StopTimesInPattern(TripPattern pattern) {
-        this.pattern = new PatternShort(pattern);
+    public StopTimesInPattern(TripPattern pattern, boolean detail) {
+        this.pattern = new PatternShort(pattern, detail);
     }
 
 }

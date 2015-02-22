@@ -27,9 +27,7 @@ import org.opentripplanner.profile.ProfileTransfer;
 import org.opentripplanner.profile.StopCluster;
 import org.opentripplanner.profile.StopNameNormalizer;
 import org.opentripplanner.profile.StopTreeCache;
-import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.ServiceDay;
-import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.edgetype.TablePatternEdge;
 import org.opentripplanner.routing.edgetype.Timetable;
 import org.opentripplanner.routing.edgetype.TimetableResolver;
@@ -306,10 +304,11 @@ public class GraphIndex {
      * Fetches two departures for each pattern during the next 24 hours as default
      *
      * @param stop
+     * @param detail
      * @return
      */
-    public Collection<StopTimesInPattern> stopTimesForStop(Stop stop) {
-        return getStopTimesForStop(stop, 24 * 60 * 60, 2);
+    public Collection<StopTimesInPattern> stopTimesForStop(Stop stop, boolean detail) {
+        return getStopTimesForStop(stop, 24 * 60 * 60, 2, detail);
     }
 
     /**
@@ -324,9 +323,10 @@ public class GraphIndex {
      * @param stop
      * @param timeRange
      * @param numberOfDepartures
+     * @param detail
      * @return
      */
-    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, int timeRange, int numberOfDepartures) {
+    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, int timeRange, int numberOfDepartures, boolean detail) {
 
         long now = System.currentTimeMillis()/1000;
         List<StopTimesInPattern> ret = new ArrayList<>();
@@ -368,7 +368,10 @@ public class GraphIndex {
                             if (!sd.serviceRunning(t.serviceCode)) continue;
                             if (t.getDepartureTime(sidx) != -1 &&
                                     t.getDepartureTime(sidx) >= secondsSinceMidnight) {
-                                pq.insertWithOverflow(new TripTimeShort(t, sidx, stop, sd));
+                                TripTimeShort timeShort = new TripTimeShort(t, sidx, stop, sd);
+                                timeShort.pickup = pattern.getBoardType(sidx);
+                                timeShort.dropoff = pattern.getAlightType(sidx);
+                                pq.insertWithOverflow(timeShort);
                             }
                         }
 
@@ -392,7 +395,7 @@ public class GraphIndex {
             }
 
             if (pq.size() != 0) {
-                StopTimesInPattern stopTimes = new StopTimesInPattern(pattern);
+                StopTimesInPattern stopTimes = new StopTimesInPattern(pattern, detail);
                 while (pq.size() != 0) {
                     stopTimes.times.add(0, pq.pop());
                 }
@@ -408,14 +411,15 @@ public class GraphIndex {
      *
      * @param stop
      * @param serviceDate
+     * @param detail
      * @return
      */
-    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, ServiceDate serviceDate) {
+    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, ServiceDate serviceDate, boolean detail) {
         List<StopTimesInPattern> ret = new ArrayList<>();
         TimetableResolver timetableResolver = graph.timetableSnapshotSource.getTimetableSnapshot();
         Collection<TripPattern> patterns = patternsForStop.get(stop);
         for (TripPattern pattern : patterns) {
-            StopTimesInPattern stopTimes = new StopTimesInPattern(pattern);
+            StopTimesInPattern stopTimes = new StopTimesInPattern(pattern, detail);
             Timetable tt = timetableResolver.resolve(pattern, serviceDate);
             ServiceDay sd = new ServiceDay(graph, serviceDate, calendarService, pattern.route.getAgency().getId());
             int sidx = 0;
@@ -423,7 +427,10 @@ public class GraphIndex {
                 if (currStop == stop) {
                     for (TripTimes t : tt.tripTimes) {
                         if (!sd.serviceRunning(t.serviceCode)) continue;
-                        stopTimes.times.add(new TripTimeShort(t, sidx, stop));
+                        TripTimeShort timeShort = new TripTimeShort(t, sidx, stop);
+                        timeShort.pickup = pattern.getBoardType(sidx);
+                        timeShort.dropoff = pattern.getAlightType(sidx);
+                        stopTimes.times.add(timeShort);
                     }
                 }
                 sidx++;

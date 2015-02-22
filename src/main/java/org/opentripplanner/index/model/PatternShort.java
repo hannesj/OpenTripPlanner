@@ -11,10 +11,23 @@ public class PatternShort {
 
     public String id;
     public String desc;
-    
+    public String direction;
+    public String shortName;
+    public String longName;
+
+
     public PatternShort (TripPattern pattern) {
+        this(pattern, false);
+    }
+
+    public PatternShort(TripPattern pattern, boolean detail) {
         id = pattern.code;
         desc = pattern.name;
+        if (detail) {
+            direction = pattern.getDirection();
+            shortName = pattern.route.getShortName();
+            longName = pattern.route.getLongName();
+        }
     }
     
     public static List<PatternShort> list (Collection<TripPattern> in) {

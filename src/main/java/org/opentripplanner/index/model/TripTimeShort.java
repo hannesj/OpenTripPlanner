@@ -23,6 +23,8 @@ public class TripTimeShort {
     public int departureDelay = UNDEFINED ;
     public boolean timepoint = false;
     public boolean realtime = false;
+    public int pickup = UNDEFINED;
+    public int dropoff = UNDEFINED;
     public long serviceDay;
     public AgencyAndId tripId;
 
