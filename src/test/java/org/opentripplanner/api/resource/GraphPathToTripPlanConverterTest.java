@@ -114,9 +114,9 @@ public class GraphPathToTripPlanConverterTest {
     public void testGenerateItinerary() {
         GraphPath[] graphPaths = buildPaths();
 
-        compare(GraphPathToTripPlanConverter.generateItinerary(graphPaths[0], true), Type.FORWARD);
-        compare(GraphPathToTripPlanConverter.generateItinerary(graphPaths[1], true), Type.BACKWARD);
-        compare(GraphPathToTripPlanConverter.generateItinerary(graphPaths[2], true), Type.ONBOARD);
+        compare(GraphPathToTripPlanConverter.generateItinerary(graphPaths[0], true, request.locale), Type.FORWARD);
+        compare(GraphPathToTripPlanConverter.generateItinerary(graphPaths[1], true, request.locale), Type.BACKWARD);
+        compare(GraphPathToTripPlanConverter.generateItinerary(graphPaths[2], true, request.locale), Type.ONBOARD);
     }
 
     /**
@@ -128,7 +128,7 @@ public class GraphPathToTripPlanConverterTest {
         // Reuse testGenerateItinerary()'s graph path, but shorten it
         GraphPath graphPath = new GraphPath(buildPaths()[0].states.get(3), false);
 
-        Itinerary itinerary = GraphPathToTripPlanConverter.generateItinerary(graphPath, false);
+        Itinerary itinerary = GraphPathToTripPlanConverter.generateItinerary(graphPath, false, request.locale);
 
         assertEquals(1, itinerary.legs.size());
         assertEquals("WALK", itinerary.legs.get(0).mode);

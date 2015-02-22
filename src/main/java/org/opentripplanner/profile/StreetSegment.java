@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 
 /** A response object describing a non-transit part of an option (usually access/egress). */
 public class StreetSegment {
@@ -51,7 +52,7 @@ public class StreetSegment {
         }
         Geometry geom = GeometryUtils.getGeometryFactory().createLineString(coordinates);
         this.geometry = PolylineEncoder.createEncodings(geom);
-        Itinerary itin = GraphPathToTripPlanConverter.generateItinerary(path, false);
+        Itinerary itin = GraphPathToTripPlanConverter.generateItinerary(path, false, Locale.ENGLISH);
         for (Leg leg : itin.legs) {
             walkSteps.addAll(leg.walkSteps);
         }

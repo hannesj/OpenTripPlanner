@@ -78,19 +78,157 @@ public abstract class GraphPathToTripPlanConverter {
 
     private static final Logger LOG = LoggerFactory.getLogger(GraphPathToTripPlanConverter.class);
     private static final double MAX_ZAG_DISTANCE = 30;
+
+<<<<<<< HEAD:src/main/java/org/opentripplanner/api/resource/PlanGenerator.java
+    public PathService pathService;
+    public Graph graph;
     private Locale requestedLocale;
 
+    public PlanGenerator(Graph graph, PathService pathService) {
+        this.graph = graph;
+        this.pathService = pathService;
+    }
 
+    /** Generates a TripPlan from a Request */
+    public TripPlan generate(RoutingRequest options) {
+
+        // TODO: this seems to only check the endpoints, which are usually auto-generated
+        //if ( ! options.isAccessible())
+        //    throw new LocationNotAccessible();
+        
+        // Copy options to keep originals
+        RoutingRequest originalOptions = options.clone();
+
+        requestedLocale = options.locale;
+
+        /* try to plan the trip */
+        List<GraphPath> paths = null;
+        boolean tooSloped = false;
+        try {
+            paths = getPaths(options);
+            if (paths == null && options.wheelchairAccessible) {
+                // There are no paths that meet the user's slope restrictions.
+                // Try again without slope restrictions (and warn user).
+                options.maxSlope = Double.MAX_VALUE;
+                options.maxWalkDistance = originalOptions.maxWalkDistance;
+                paths = getPaths(options);
+                tooSloped = true;
+            }
+        } catch (VertexNotFoundException e) {
+            LOG.info("Vertex not found: " + options.from + " : " + options.to);
+            throw e;
+        }
+        options.rctx.debugOutput.finishedCalculating();
+
+        if (paths == null || paths.size() == 0) {
+            LOG.debug("Path not found: " + options.from + " : " + options.to);
+            options.rctx.debugOutput.finishedRendering(); // make sure we still report full search time
+            throw new PathNotFoundException();
+        }
+
+        for (GraphPath graphPath : paths) {
+            if (originalOptions.arriveBy) {
+                if (graphPath.states.getLast().getTimeSeconds() > originalOptions.dateTime) {
+                    LOG.error("A graph path arrives after the requested time. This implies a bug.");
+                }
+            } else {
+                if (graphPath.states.getFirst().getTimeSeconds() < originalOptions.dateTime) {
+                    LOG.error("A graph path leaves before the requested time. This implies a bug.");
+                }
+            }
+        }
+
+        TripPlan plan = generatePlan(paths, originalOptions);
+        if (plan != null) {
+            for (Itinerary i : plan.itinerary) {
+                i.tooSloped = tooSloped;
+                /* fix up from/to on first/last legs */
+                if (i.legs.size() == 0) {
+                    LOG.warn("itinerary has no legs");
+                    continue;
+                }
+                Leg firstLeg = i.legs.get(0);
+                firstLeg.from.orig = plan.from.orig;
+                Leg lastLeg = i.legs.get(i.legs.size() - 1);
+                lastLeg.to.orig = plan.to.orig;
+            }
+        }
+        options.rctx.debugOutput.finishedRendering();
+        return plan;
+    }
+
+    /**
+     * Break up a RoutingRequest with intermediate places into separate requests, in the given order
+     */
+    private List<GraphPath> getPaths(RoutingRequest request) {
+        if (request.hasIntermediatePlaces()) {
+            long time = request.dateTime;
+            GenericLocation from = request.from;
+            List<GenericLocation> places = Lists.newLinkedList(request.intermediatePlaces);
+            places.add(request.to);
+            request.clearIntermediatePlaces();
+            List<GraphPath> paths = new ArrayList<>();
+
+            for (GenericLocation to : places) {
+                request.dateTime = time;
+                request.from = from;
+                request.to = to;
+                request.rctx = null;
+                request.setRoutingContext(graph);
+
+                List<GraphPath> partialPaths = pathService.getPaths(request);
+                if (partialPaths == null || partialPaths.size() == 0) {
+                    return null;
+                }
+
+                GraphPath path = partialPaths.get(0);
+                paths.add(path);
+                from = to;
+                time = path.getEndTime();
+            }
+
+            return Arrays.asList(joinPaths(paths));
+        } else {
+            return pathService.getPaths(request);
+        }
+    }
+
+    private GraphPath joinPaths(List<GraphPath> paths) {
+        State lastState = paths.get(0).states.getLast();
+        GraphPath newPath = new GraphPath(lastState, false);
+        Vertex lastVertex = lastState.getVertex();
+        for (GraphPath path : paths.subList(1, paths.size())) {
+            lastState = newPath.states.getLast();
+            // add a leg-switching state
+            LegSwitchingEdge legSwitchingEdge = new LegSwitchingEdge(lastVertex, lastVertex);
+            lastState = legSwitchingEdge.traverse(lastState);
+            newPath.edges.add(legSwitchingEdge);
+            newPath.states.add(lastState);
+            // add the next subpath
+            for (Edge e : path.edges) {
+                lastState = e.traverse(lastState);
+                newPath.edges.add(e);
+                newPath.states.add(lastState);
+            }
+            lastVertex = path.getEndVertex();
+        }
+        return newPath;
+    }
+
+=======
+>>>>>>> upstream/master:src/main/java/org/opentripplanner/api/resource/GraphPathToTripPlanConverter.java
     /**
      * Generates a TripPlan from a set of paths
      */
     public static TripPlan generatePlan(List<GraphPath> paths, RoutingRequest request) {
 
+        requestedLocale = request.locale;
+
         GraphPath exemplar = paths.get(0);
         Vertex tripStartVertex = exemplar.getStartVertex();
         Vertex tripEndVertex = exemplar.getEndVertex();
-        String startName = tripStartVertex.getName(request.locale);
-        String endName = tripEndVertex.getName(request.locale);
+        String startName = tripStartVertex.getName(requestedLocale);
+        String endName = tripEndVertex.getName(requestedLocale);
 
         // Use vertex labels if they don't have names
         if (startName == null) {
@@ -108,7 +246,7 @@ public abstract class GraphPathToTripPlanConverter {
         TripPlan plan = new TripPlan(from, to, request.getDateTime());
 
         for (GraphPath path : paths) {
-            Itinerary itinerary = generateItinerary(path, request.showIntermediateStops, request.locale);
+            Itinerary itinerary = generateItinerary(path, request.showIntermediateStops);
             itinerary = adjustItinerary(request, itinerary);
             plan.addItinerary(itinerary);
         }
@@ -153,10 +291,9 @@ public abstract class GraphPathToTripPlanConverter {
      *
      * @param path The graph path to base the itinerary on
      * @param showIntermediateStops Whether to include intermediate stops in the itinerary or not
-     * @param locale
      * @return The generated itinerary
      */
-    public static Itinerary generateItinerary(GraphPath path, boolean showIntermediateStops, Locale locale) {
+    public static Itinerary generateItinerary(GraphPath path, boolean showIntermediateStops) {
         if (path.states.size() < 2) {
             throw new TrivialPathException();
         }
@@ -181,10 +318,10 @@ public abstract class GraphPathToTripPlanConverter {
         }
 
         for (State[] legStates : legsStates) {
-            itinerary.addLeg(generateLeg(graph, legStates, showIntermediateStops, locale));
+            itinerary.addLeg(generateLeg(graph, legStates, showIntermediateStops));
         }
 
-        addWalkSteps(graph, itinerary.legs, legsStates, locale);
+        addWalkSteps(graph, itinerary.legs, legsStates);
 
         fixupLegs(itinerary.legs, legsStates);
 
@@ -301,10 +438,9 @@ public abstract class GraphPathToTripPlanConverter {
      *
      * @param states The array of states to base the leg on
      * @param showIntermediateStops Whether to include intermediate stops in the leg or not
-     * @param locale
      * @return The generated leg
      */
-    private static Leg generateLeg(Graph graph, State[] states, boolean showIntermediateStops, Locale locale) {
+    private static Leg generateLeg(Graph graph, State[] states, boolean showIntermediateStops) {
         Leg leg = new Leg();
 
         Edge[] edges = new Edge[states.length - 1];
@@ -319,12 +455,12 @@ public abstract class GraphPathToTripPlanConverter {
             leg.distance += edges[i].getDistance();
         }
 
-        addModeAndAlerts(graph, leg, states, locale);
+        addModeAndAlerts(graph, leg, states);
 
         TimeZone timeZone = leg.startTime.getTimeZone();
         leg.agencyTimeZoneOffset = timeZone.getOffset(leg.startTime.getTimeInMillis());
 
-        addTripFields(leg, states, locale);
+        addTripFields(leg, states);
 
         addPlaces(leg, states, edges, showIntermediateStops);
 
@@ -369,15 +505,15 @@ public abstract class GraphPathToTripPlanConverter {
     /**
      * Add a {@link WalkStep} {@link List} to a {@link Leg} {@link List}.
      * It's more convenient to process all legs in one go because the previous step should be kept.
-     *  @param legs The legs of the itinerary
+     *
+     * @param legs The legs of the itinerary
      * @param legsStates The states that go with the legs
-     * @param locale
      */
-    private static void addWalkSteps(Graph graph, List<Leg> legs, State[][] legsStates, Locale locale) {
+    private static void addWalkSteps(Graph graph, List<Leg> legs, State[][] legsStates) {
         WalkStep previousStep = null;
 
         for (int i = 0; i < legsStates.length; i++) {
-            List<WalkStep> walkSteps = generateWalkSteps(graph, legsStates[i], previousStep, locale);
+            List<WalkStep> walkSteps = generateWalkSteps(graph, legsStates[i], previousStep, requestedLocale);
 
             legs.get(i).walkSteps = walkSteps;
 
@@ -523,11 +659,11 @@ public abstract class GraphPathToTripPlanConverter {
 
     /**
      * Add mode and alerts fields to a {@link Leg}.
-     *  @param leg The leg to add the mode and alerts to
+     *
+     * @param leg The leg to add the mode and alerts to
      * @param states The states that go with the leg
-     * @param locale
      */
-    private static void addModeAndAlerts(Graph graph, Leg leg, State[] states, Locale locale) {
+    private static void addModeAndAlerts(Graph graph, Leg leg, State[] states) {
         for (State state : states) {
             TraverseMode mode = state.getBackMode();
             Set<Alert> alerts = graph.streetNotesService.getNotes(state);
@@ -539,13 +675,13 @@ public abstract class GraphPathToTripPlanConverter {
 
             if (alerts != null) {
                 for (Alert alert : alerts) {
-                    leg.addAlert(alert, locale);
+                    leg.addAlert(alert, requestedLocale);
                 }
             }
 
             for (AlertPatch alertPatch : graph.getAlertPatches(edge)) {
                 if (alertPatch.displayDuring(state)) {
-                    leg.addAlert(alertPatch.getAlert(), locale);
+                    leg.addAlert(alertPatch.getAlert(), requestedLocale);
                 }
             }
         }
@@ -553,11 +689,11 @@ public abstract class GraphPathToTripPlanConverter {
 
     /**
      * Add trip-related fields to a {@link Leg}.
-     *  @param leg The leg to add the trip-related fields to
+     *
+     * @param leg The leg to add the trip-related fields to
      * @param states The states that go with the leg
-     * @param locale
      */
-    private static void addTripFields(Leg leg, State[] states, Locale locale) {
+    private static void addTripFields(Leg leg, State[] states) {
         Trip trip = states[states.length - 1].getBackTrip();
 
         if (trip != null) {
@@ -569,7 +705,7 @@ public abstract class GraphPathToTripPlanConverter {
             leg.agencyName = agency.getName();
             leg.agencyUrl = agency.getUrl();
             leg.headsign = states[states.length - 1].getBackDirection();
-            leg.route = states[states.length - 1].getBackEdge().getName(locale);
+            leg.route = states[states.length - 1].getBackEdge().getName(requestedLocale);
             leg.routeColor = route.getColor();
             leg.routeId = route.getId().getId();
             leg.routeLongName = route.getLongName();
