@@ -14,6 +14,7 @@ public class PatternShort {
     public String direction;
     public String shortName;
     public String longName;
+    public String mode;
 
 
     public PatternShort (TripPattern pattern) {
@@ -27,6 +28,7 @@ public class PatternShort {
             direction = pattern.getDirection();
             shortName = pattern.route.getShortName();
             longName = pattern.route.getLongName();
+            mode = pattern.mode.name();
         }
     }
     

@@ -365,8 +365,8 @@ public class GraphIndex {
                             if (t.getDepartureTime(sidx) != -1 &&
                                     t.getDepartureTime(sidx) >= secondsSinceMidnight) {
                                 TripTimeShort timeShort = new TripTimeShort(t, sidx, stop, sd);
-                                timeShort.pickup = pattern.getBoardType(sidx);
-                                timeShort.dropoff = pattern.getAlightType(sidx);
+                                timeShort.pickup = pattern.canBoard(sidx) && sidx != pattern.stopPattern.size;
+                                timeShort.dropoff = pattern.canAlight(sidx) && sidx != 0;
                                 pq.insertWithOverflow(timeShort);
                             }
                         }
@@ -380,7 +380,10 @@ public class GraphIndex {
                                     freq.tripTimes.getDepartureTime(0);
                             int i = 0;
                             while (departureTime <= lastDeparture && i < numberOfDepartures) {
-                                pq.insertWithOverflow(new TripTimeShort(freq.materialize(sidx, departureTime, true), sidx, stop, sd));
+                                TripTimeShort timeShort = new TripTimeShort(freq.materialize(sidx, departureTime, true), sidx, stop, sd);
+                                timeShort.pickup = pattern.canBoard(sidx) && sidx != pattern.stopPattern.size;
+                                timeShort.dropoff = pattern.canAlight(sidx) && sidx != 0;
+                                pq.insertWithOverflow(timeShort);
                                 departureTime += freq.headway;
                                 i++;
                             }
@@ -432,8 +435,8 @@ public class GraphIndex {
                     for (TripTimes t : tt.tripTimes) {
                         if (!sd.serviceRunning(t.serviceCode)) continue;
                         TripTimeShort timeShort = new TripTimeShort(t, sidx, stop, sd);
-                        timeShort.pickup = pattern.getBoardType(sidx);
-                        timeShort.dropoff = pattern.getAlightType(sidx);
+                        timeShort.pickup = pattern.canBoard(sidx) && sidx != pattern.stopPattern.size;
+                        timeShort.dropoff = pattern.canAlight(sidx) && sidx != 0;
                         stopTimes.times.add(timeShort);
                     }
                 }
