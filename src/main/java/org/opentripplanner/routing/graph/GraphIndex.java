@@ -301,8 +301,8 @@ public class GraphIndex {
      * Fetch upcoming vehicle departures from a stop.
      * Fetches two departures for each pattern during the next 24 hours as default
      */
-    public Collection<StopTimesInPattern> stopTimesForStop(Stop stop) {
-        return stopTimesForStop(stop, System.currentTimeMillis()/1000, 24 * 60 * 60, 2, detail);
+    public Collection<StopTimesInPattern> stopTimesForStop(Stop stop, boolean detail) {
+        return getStopTimesForStop(stop, System.currentTimeMillis()/1000, 24 * 60 * 60, 2, detail);
     }
 
     /**
@@ -320,7 +320,7 @@ public class GraphIndex {
      * @param detail
      * @return
      */
-    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, int timeRange, int numberOfDepartures, boolean detail) {
+    public List<StopTimesInPattern> getStopTimesForStop(Stop stop, long startTime, int timeRange, int numberOfDepartures, boolean detail) {
 
         if (startTime == 0) {
             startTime = System.currentTimeMillis() / 1000;
