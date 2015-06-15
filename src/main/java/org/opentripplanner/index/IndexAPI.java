@@ -27,6 +27,8 @@ import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.model.GenericLocation;
+import org.opentripplanner.graph_builder.module.NearbyStopFinder;
 import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.index.model.PatternDetail;
 import org.opentripplanner.index.model.PatternShort;
@@ -37,12 +39,16 @@ import org.opentripplanner.index.model.StopTimesInPattern;
 import org.opentripplanner.index.model.TripShort;
 import org.opentripplanner.index.model.TripTimeShort;
 import org.opentripplanner.profile.StopCluster;
+import org.opentripplanner.routing.core.RoutingRequest;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.SimpleTransfer;
 import org.opentripplanner.routing.edgetype.Timetable;
 import org.opentripplanner.routing.edgetype.TripPattern;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.GraphIndex;
+import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.services.StreetVertexIndexService;
+import org.opentripplanner.routing.vertextype.TemporaryVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.standalone.OTPServer;
 import org.opentripplanner.standalone.Router;
@@ -162,7 +168,8 @@ public class IndexAPI {
            @QueryParam("maxLon") Double maxLon,
            @QueryParam("lat")    Double lat,
            @QueryParam("lon")    Double lon,
-           @QueryParam("radius") Double radius) {
+           @QueryParam("radius") Double radius,
+           @QueryParam("useStreets") Boolean useStreets) {
 
        /* When no parameters are supplied, return all stops. */
        if (uriInfo.getQueryParameters().isEmpty()) {
@@ -178,14 +185,21 @@ public class IndexAPI {
            if (radius > MAX_STOP_SEARCH_RADIUS){
                radius = MAX_STOP_SEARCH_RADIUS;
            }
-           List<StopShort> stops = Lists.newArrayList(); 
-           Coordinate coord = new Coordinate(lon, lat);
-           for (TransitStop stopVertex : streetIndex.getNearbyTransitStops(
-                    new Coordinate(lon, lat), radius)) {
-               double distance = SphericalDistanceLibrary.fastDistance(stopVertex.getCoordinate(), coord);
-               if (distance < radius) {
-                   stops.add(new StopShort(stopVertex.getStop(), (int) distance));
+           List stops;
+           if (useStreets != true) {
+               stops = Lists.newArrayList();
+               Coordinate coord = new Coordinate(lon, lat);
+               for (TransitStop stopVertex : streetIndex.getNearbyTransitStops(
+                       new Coordinate(lon, lat), radius)) {
+                   double distance = SphericalDistanceLibrary.fastDistance(stopVertex.getCoordinate(), coord);
+                   if (distance < radius) {
+                       stops.add(new StopShort(stopVertex.getStop(), (int) distance));
+                   }
                }
+           } else {
+               Vertex v = streetIndex.getVertexForLocation(new GenericLocation(lat, lon), new RoutingRequest(TraverseMode.WALK), false);
+               stops = new NearbyStopFinder(index.graph, radius).findNearbyStops(v);
+               if (v instanceof TemporaryVertex) ((TemporaryVertex)v).dispose();
            }
            return Response.status(Status.OK).entity(stops).build();
        } else {
