@@ -31,14 +31,7 @@ import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.graph_builder.module.NearbyStopFinder;
 import org.opentripplanner.graph_builder.module.NearbyStopFinder.StopAtDistance;
 import org.opentripplanner.gtfs.GtfsLibrary;
-import org.opentripplanner.index.model.PatternDetail;
-import org.opentripplanner.index.model.PatternShort;
-import org.opentripplanner.index.model.RouteShort;
-import org.opentripplanner.index.model.StopClusterDetail;
-import org.opentripplanner.index.model.StopShort;
-import org.opentripplanner.index.model.StopTimesInPattern;
-import org.opentripplanner.index.model.TripShort;
-import org.opentripplanner.index.model.TripTimeShort;
+import org.opentripplanner.index.model.*;
 import org.opentripplanner.profile.StopCluster;
 import org.opentripplanner.routing.edgetype.SimpleTransfer;
 import org.opentripplanner.routing.edgetype.Timetable;
@@ -392,7 +385,7 @@ public class IndexAPI {
 
 
     @GET
-    @Path("/routes/{routeId}/trip/{direction}/{date}/{time}")
+    @Path("/routes/{routeId}/trips/{date}/{direction}/{time}")
     public Response getFuzzyTrip (@PathParam("routeId") String routeIdString,
                                   @PathParam("direction") int direction,
                                   @PathParam("date") String sd,
@@ -407,7 +400,8 @@ public class IndexAPI {
                 return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
             }
             int time = StopTimeFieldMappingFactory.getStringAsSeconds(timeString.substring(0,2) + ":" + timeString.substring(2,4) + ":00");
-            return Response.status(Status.OK).entity(new GtfsRealtimeFuzzyTripMatcher(index).getTrip(route, direction, time, date)).build();
+            Trip trip = new GtfsRealtimeFuzzyTripMatcher(index).getTrip(route, direction, time, date);
+            return Response.status(Status.OK).entity(new TripDetail(trip, index.patternForTrip.get(trip))).build();
         } else {
             return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
         }
