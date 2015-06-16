@@ -26,6 +26,7 @@ import org.onebusaway.gtfs.model.Route;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
+import org.onebusaway.gtfs.serialization.mappings.StopTimeFieldMappingFactory;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.graph_builder.module.NearbyStopFinder;
 import org.opentripplanner.graph_builder.module.NearbyStopFinder.StopAtDistance;
@@ -49,6 +50,7 @@ import org.opentripplanner.routing.services.StreetVertexIndexService;
 import org.opentripplanner.routing.vertextype.TransitStop;
 import org.opentripplanner.standalone.OTPServer;
 import org.opentripplanner.standalone.Router;
+import org.opentripplanner.updater.GtfsRealtimeFuzzyTripMatcher;
 import org.opentripplanner.util.PolylineEncoder;
 import org.opentripplanner.util.model.EncodedPolylineBean;
 import org.slf4j.Logger;
@@ -387,8 +389,30 @@ public class IndexAPI {
            return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
        }
    }
-   
-   
+
+
+    @GET
+    @Path("/routes/{routeId}/trip/{direction}/{date}/{time}")
+    public Response getFuzzyTrip (@PathParam("routeId") String routeIdString,
+                                  @PathParam("direction") int direction,
+                                  @PathParam("date") String sd,
+                                  @PathParam("time") String timeString) {
+        AgencyAndId routeId = GtfsLibrary.convertIdFromString(routeIdString);
+        Route route = index.routeForId.get(routeId);
+        if (route != null) {
+            ServiceDate date;
+            try {
+                date = ServiceDate.parseString(sd);
+            } catch (ParseException e) {
+                return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
+            }
+            int time = StopTimeFieldMappingFactory.getStringAsSeconds(timeString.substring(0,2) + ":" + timeString.substring(2,4) + ":00");
+            return Response.status(Status.OK).entity(new GtfsRealtimeFuzzyTripMatcher(index).getTrip(route, direction, time, date)).build();
+        } else {
+            return Response.status(Status.NOT_FOUND).entity(MSG_404).build();
+        }
+    }
+
     // Not implemented, results would be too voluminous.
     // @Path("/trips")
 
