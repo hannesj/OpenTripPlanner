@@ -23,6 +23,7 @@ depends on otp-routing.
     <appender-ref ref="STDOUT" />
     <appender-ref ref="Sentry" />
   </root>
+  
   <logger name="org.opentripplanner" level="info" />
   <logger name="org.opentripplanner.analyst" level="info" />
   <logger name="org.opentripplanner.routing" level="info" />

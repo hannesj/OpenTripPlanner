@@ -31,7 +31,8 @@ import org.opentripplanner.routing.util.UniqueIdGenerator;
 import com.vividsolutions.jts.geom.LineString;
 
 /**
- * This is the standard implementation of an edge with fixed from and to Vertex instances; all standard OTP edges are subclasses of this.
+ * This is the standard implementation of an edge with fixed from and to Vertex instances;
+ * all standard OTP edges are subclasses of this.
  */
 public abstract class Edge implements Serializable {
 
@@ -110,40 +111,6 @@ public abstract class Edge implements Serializable {
      */
     public String getDirection() {
         return null;
-    }
-
-    protected boolean detachFrom(Graph graph) {
-        boolean detached = false;
-        if (fromv != null) {
-            detached = fromv.removeOutgoing(this);
-            fromv = null;
-        }
-        return detached;
-    }
-
-    protected boolean detachTo(Graph graph) {
-        boolean detached = false;
-        if (tov != null) {
-            detached = tov.removeIncoming(this);
-            tov = null;
-        }
-        return detached;
-    }
-
-    /**
-     * Disconnect this edge from its endpoint vertices, keeping edgelists coherent
-     * 
-     * @return
-     */
-    public int detach(Graph graph) {
-        int nDetached = 0;
-        if (detachFrom(graph)) {
-            ++nDetached;
-        }
-        if (detachTo(graph)) {
-            ++nDetached;
-        }
-        return nDetached;
     }
 
     /**

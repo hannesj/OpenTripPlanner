@@ -1,5 +1,7 @@
 package org.opentripplanner.profile;
 
+import java.io.Serializable;
+
 import org.joda.time.LocalDate;
 import org.opentripplanner.api.param.LatLon;
 import org.opentripplanner.routing.core.TraverseModeSet;
@@ -10,7 +12,7 @@ import javax.ws.rs.QueryParam;
 /**
  * All the modifiable paramters for profile routing.
  */
-public class ProfileRequest {
+public class ProfileRequest implements Serializable {
 
     public LatLon from;
     public LatLon to;
@@ -44,4 +46,38 @@ public class ProfileRequest {
       alternatives out a bit to account for the fact that they don't always run on schedule.
     */
     public int suboptimalMinutes;
+    
+    public ProfileRequest clone () {
+        ProfileRequest ret = new ProfileRequest();
+        ret.from = from;
+        ret.to = to;
+        ret.fromTime = fromTime;
+        ret.toTime = toTime;
+        
+        ret.walkSpeed = walkSpeed;
+        ret.bikeSpeed = bikeSpeed;
+        ret.carSpeed = carSpeed;
+        
+        ret.streetTime = streetTime;
+        ret.maxWalkTime = maxWalkTime;
+        ret.maxBikeTime = maxBikeTime;
+        ret.maxCarTime = maxCarTime;
+        ret.minBikeTime = minBikeTime;
+        ret.minCarTime = minCarTime;
+        
+        // LocalDate is immutable, no need to copy
+        ret.date = date;
+        // TODO: deep clone needed? mutable?
+        ret.orderBy = orderBy;
+        ret.limit = limit;
+        ret.accessModes = accessModes != null ? accessModes.clone() : null;
+        ret.egressModes = egressModes != null ? egressModes.clone() : null;
+        ret.directModes = directModes != null ? directModes.clone() : null;
+        ret.transitModes = transitModes != null ? transitModes.clone() : null;
+        
+        ret.analyst = analyst;
+        ret.suboptimalMinutes = suboptimalMinutes;
+        
+        return ret;
+    }
 }

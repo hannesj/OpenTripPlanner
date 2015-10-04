@@ -29,6 +29,7 @@ import org.opentripplanner.api.model.WalkStep;
 import org.opentripplanner.common.geometry.DirectionUtils;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.common.geometry.PackedCoordinateSequence;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.common.model.P2;
 import org.opentripplanner.gtfs.GtfsLibrary;
 import org.opentripplanner.routing.alertpatch.Alert;
@@ -46,7 +47,6 @@ import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.services.FareService;
-import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.trippattern.TripTimes;
@@ -55,6 +55,7 @@ import org.opentripplanner.util.PolylineEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.LineString;
@@ -66,10 +67,10 @@ public class PlanGenerator {
     private static final double MAX_ZAG_DISTANCE = 30;
 
     public PathService pathService;
-    public GraphService graphService;
+    public Graph graph;
 
-    public PlanGenerator(GraphService graphService, PathService pathService) {
-        this.graphService = graphService;
+    public PlanGenerator(Graph graph, PathService pathService) {
+        this.graph = graph;
         this.pathService = pathService;
     }
 
@@ -87,13 +88,13 @@ public class PlanGenerator {
         List<GraphPath> paths = null;
         boolean tooSloped = false;
         try {
-            paths = pathService.getPaths(options);
+            paths = getPaths(options);
             if (paths == null && options.wheelchairAccessible) {
                 // There are no paths that meet the user's slope restrictions.
                 // Try again without slope restrictions (and warn user).
                 options.maxSlope = Double.MAX_VALUE;
                 options.maxWalkDistance = originalOptions.maxWalkDistance;
-                paths = pathService.getPaths(options);
+                paths = getPaths(options);
                 tooSloped = true;
             }
         } catch (VertexNotFoundException e) {
@@ -103,7 +104,8 @@ public class PlanGenerator {
         options.rctx.debugOutput.finishedCalculating();
 
         if (paths == null || paths.size() == 0) {
-            LOG.info("Path not found: " + options.from + " : " + options.to);
+            LOG.debug("Path not found: " + options.from + " : " + options.to);
+            options.rctx.debugOutput.finishedRendering(); // make sure we still report full search time
             throw new PathNotFoundException();
         }
 
@@ -136,6 +138,64 @@ public class PlanGenerator {
         }
         options.rctx.debugOutput.finishedRendering();
         return plan;
+    }
+
+    /**
+     * Break up a RoutingRequest with intermediate places into separate requests, in the given order
+     */
+    private List<GraphPath> getPaths(RoutingRequest request) {
+        if (request.hasIntermediatePlaces()) {
+            long time = request.dateTime;
+            GenericLocation from = request.from;
+            List<GenericLocation> places = Lists.newLinkedList(request.intermediatePlaces);
+            places.add(request.to);
+            request.clearIntermediatePlaces();
+            List<GraphPath> paths = new ArrayList<>();
+
+            for (GenericLocation to : places) {
+                request.dateTime = time;
+                request.from = from;
+                request.to = to;
+                request.rctx = null;
+                request.setRoutingContext(graph);
+
+                List<GraphPath> partialPaths = pathService.getPaths(request);
+                if (partialPaths == null || partialPaths.size() == 0) {
+                    return null;
+                }
+
+                GraphPath path = partialPaths.get(0);
+                paths.add(path);
+                from = to;
+                time = path.getEndTime();
+            }
+
+            return Arrays.asList(joinPaths(paths));
+        } else {
+            return pathService.getPaths(request);
+        }
+    }
+
+    private GraphPath joinPaths(List<GraphPath> paths) {
+        State lastState = paths.get(0).states.getLast();
+        GraphPath newPath = new GraphPath(lastState, false);
+        Vertex lastVertex = lastState.getVertex();
+        for (GraphPath path : paths.subList(1, paths.size())) {
+            lastState = newPath.states.getLast();
+            // add a leg-switching state
+            LegSwitchingEdge legSwitchingEdge = new LegSwitchingEdge(lastVertex, lastVertex);
+            lastState = legSwitchingEdge.traverse(lastState);
+            newPath.edges.add(legSwitchingEdge);
+            newPath.states.add(lastState);
+            // add the next subpath
+            for (Edge e : path.edges) {
+                lastState = e.traverse(lastState);
+                newPath.edges.add(e);
+                newPath.states.add(lastState);
+            }
+            lastVertex = path.getEndVertex();
+        }
+        return newPath;
     }
 
     /**
@@ -812,7 +872,7 @@ public class PlanGenerator {
             place.platformCode = stop.getPlatformCode();
             place.zoneId = stop.getZoneId();
             place.stopIndex = ((OnboardEdge) edge).getStopIndex();
-            TransitVertex transitVertex = (TransitVertex) graphService.getGraph().getVertex(GtfsLibrary.convertIdToString(place.stopId));
+            TransitVertex transitVertex = (TransitVertex) graph.getVertex(GtfsLibrary.convertIdToString(place.stopId));
             place.accessibilityInformation = transitVertex.accessibilityInformation;
             place.translatedName = transitVertex.translatedName.translations;
             if (endOfLeg) place.stopIndex++;
@@ -1179,8 +1239,6 @@ public class PlanGenerator {
     /** Returns the first trip of the service day. Currently unused.
      * TODO This should probably be done with a special time value. */
     public TripPlan generateFirstTrip(RoutingRequest request) {
-        Graph graph = graphService.getGraph(request.routerId);
-
         request.setArriveBy(false);
 
         TimeZone tz = graph.getTimeZone();
@@ -1199,8 +1257,6 @@ public class PlanGenerator {
     /** Return the last trip of the service day. Currently unused.
      * TODO This should probably be done with a special time value. */
     public TripPlan generateLastTrip(RoutingRequest request) {
-        Graph graph = graphService.getGraph(request.routerId);
-
         request.setArriveBy(true);
 
         TimeZone tz = graph.getTimeZone();
