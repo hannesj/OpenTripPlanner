@@ -27,6 +27,7 @@ import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLAPI;
 import org.opentripplanner.ext.parkAndRideApi.ParkAndRideResource;
 import org.opentripplanner.ext.readiness_endpoint.ActuatorAPI;
 import org.opentripplanner.ext.reportapi.resource.ReportResource;
+import org.opentripplanner.ext.spiderweb.SpiderwebResource;
 import org.opentripplanner.ext.transmodelapi.TransmodelAPI;
 import org.opentripplanner.ext.vectortiles.VectorTilesResource;
 import org.opentripplanner.index.IndexAPI;
@@ -44,6 +45,7 @@ public class APIEndpoints {
         add(Routers.class);
         add(PlannerResource.class);
         add(IndexAPI.class);
+        add(SpiderwebResource.class);
 
         // Add feature enabled APIs, these can be enabled by default, some is not.
         // See the OTPFeature enum for details.
