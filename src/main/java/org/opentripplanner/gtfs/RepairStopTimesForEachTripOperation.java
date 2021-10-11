@@ -165,6 +165,9 @@ public class RepairStopTimesForEachTripOperation {
             if (!st1.isDepartureTimeSet() && st1.isArrivalTimeSet()) {
                 st1.setDepartureTime(st1.getArrivalTime());
             }
+            if (!st1.isArrivalTimeSet() && st1.isDepartureTimeSet()) {
+                st1.setArrivalTime(st1.getDepartureTime());
+            }
             /* Do not process (skip over) non-timepoint stoptimes, leaving them in place for interpolation. */
             // All non-timepoint stoptimes in a series will have identical arrival and departure values of MISSING_VALUE.
             if (!(st1.isArrivalTimeSet() && st1.isDepartureTimeSet())) {
@@ -214,11 +217,6 @@ public class RepairStopTimesForEachTripOperation {
                 // series of identical stop times at different stops
                 issueStore.add(new HopZeroTime((float) hopDistance, st1.getTrip(),
                                 st1.getStopSequence()));
-                // clear stoptimes that are obviously wrong, causing them to later be interpolated
-/* FIXME (lines commented out because they break routability in multi-feed NYC for some reason -AMB) */
-                //                st1.clearArrivalTime();
-                //                st1.clearDepartureTime();
-                st1bogus = true;
             } else if (hopSpeed > 45) {
                 // 45 m/sec ~= 100 miles/hr
                 // elapsed time of 0 will give speed of +inf
@@ -230,8 +228,7 @@ public class RepairStopTimesForEachTripOperation {
                         st0.getTrip(), st0.getStopSequence()));
             }
             // st0 should reflect the last stoptime that was not clearly incorrect
-            if (!st1bogus)
-                st0 = st1;
+            st0 = st1;
         } // END for loop over stop times
     }
 
