@@ -286,7 +286,7 @@ public class SearchParams {
                 "'earliestDepartureTime' or 'latestArrivalTime' is required."
         );
         assertProperty(!accessPaths.isEmpty(), "At least one 'accessPath' is required.");
-        assertProperty(!egressPaths.isEmpty(), "At least one 'egressPath' is required.");
+        //assertProperty(!egressPaths.isEmpty(), "At least one 'egressPath' is required.");
         assertProperty(
             !(preferLateArrival && latestArrivalTime == TIME_NOT_SET),
             "The 'latestArrivalTime' is required when 'departAsLateAsPossible' is set."

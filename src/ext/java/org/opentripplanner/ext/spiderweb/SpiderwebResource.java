@@ -1,8 +1,21 @@
 package org.opentripplanner.ext.spiderweb;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+import java.util.Arrays;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.ArrayUtils;
+import org.geojson.Feature;
+import org.geojson.FeatureCollection;
+import org.geojson.LineString;
+import org.geojson.LngLatAlt;
+import org.geojson.Point;
 import org.opentripplanner.model.GenericLocation;
+import org.opentripplanner.model.Route;
+import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.TransitMode;
+import org.opentripplanner.model.Trip;
 import org.opentripplanner.routing.algorithm.raptor.router.street.AccessEgressRouter;
 import org.opentripplanner.routing.algorithm.raptor.transit.AccessEgress;
 import org.opentripplanner.routing.algorithm.raptor.transit.Transfer;
@@ -24,6 +37,7 @@ import org.opentripplanner.transit.raptor.api.request.RaptorRequestBuilder;
 import org.opentripplanner.transit.raptor.rangeraptor.RangeRaptorWorker;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.McRangeRaptorWorkerState;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.McTransitWorker;
+import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.StopArrivalParetoSet;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.Stops;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.arrivals.AbstractStopArrival;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.heuristic.HeuristicsProvider;
@@ -72,16 +86,18 @@ public class SpiderwebResource {
         routingRequest = router.defaultRoutingRequest.clone();
         routingRequest.modes.transitModes.remove(TransitMode.AIRPLANE);
 
-        final RoutingRequest transferRoutingRequest = Transfer.prepareTransferRoutingRequest(routingRequest);
+        final RoutingRequest transferRoutingRequest =
+                Transfer.prepareTransferRoutingRequest(routingRequest);
         transferRoutingRequest.setRoutingContext(router.graph, (Vertex) null, null);
 
         now = Instant.now();
 
         transitLayer = router.graph.getRealtimeTransitLayer();
         requestTransitDataProvider = new RaptorRoutingRequestTransitData(
+                router.graph.getTransferService(),
                 transitLayer,
                 now,
-                2,
+                1,
                 new RoutingRequestTransitDataProviderFilter(routingRequest, router.graph.index),
                 transferRoutingRequest
         );
@@ -118,45 +134,47 @@ public class SpiderwebResource {
                 .searchOneIterationOnly()
                 .build();
 
-        final SearchContext<TripSchedule> ctx = router.raptorConfig.context(requestTransitDataProvider, request);
+        final SearchContext<TripSchedule> ctx =
+                router.raptorConfig.context(requestTransitDataProvider, request);
 
-        final DestinationArrivalPaths<TripSchedule> destArrivalPaths = new PathConfig<>(ctx).createDestArrivalPaths(false);
+        final DestinationArrivalPaths<TripSchedule> destArrivalPaths =
+                new PathConfig<>(ctx).createDestArrivalPaths(false);
 
-        final Stops<TripSchedule> stops = new Stops<> (
+        final Stops<TripSchedule> stops = new Stops<>(
                 ctx.nStops(),
                 ctx.egressPaths(),
                 destArrivalPaths,
-                ctx.debugFactory(),
-                ctx.debugLogger()
+                ctx.debugFactory()
         );
 
-        final McRangeRaptorWorkerState<TripSchedule> workerState = new McRangeRaptorWorkerState<TripSchedule>(
-            stops,
-            destArrivalPaths,
-            new HeuristicsProvider<>(),
-            ctx.costCalculator(),
-            ctx.calculator(),
-            ctx.lifeCycle()
-        );
+        final McRangeRaptorWorkerState<TripSchedule> workerState =
+                new McRangeRaptorWorkerState<TripSchedule>(
+                        stops,
+                        destArrivalPaths,
+                        new HeuristicsProvider<>(),
+                        ctx.costCalculator(),
+                        ctx.calculator(),
+                        ctx.lifeCycle()
+                );
 
         final McTransitWorker<TripSchedule> transitWorker = new McTransitWorker<>(
-            workerState,
-            ctx.slackProvider(),
-            ctx.costCalculator(),
-            ctx.debugFactory()
+                workerState,
+                ctx.slackProvider(),
+                ctx.costCalculator(),
+                ctx.debugFactory()
         );
 
         final RangeRaptorWorker<TripSchedule> search = new RangeRaptorWorker<>(
-            workerState,
-            transitWorker,
-            ctx.transit(),
-            ctx.slackProvider(),
-            ctx.accessPaths(),
-            ctx.roundProvider(),
-            ctx.calculator(),
-            ctx.createLifeCyclePublisher(),
-            ctx.timers(),
-            ctx.enableConstrainedTransfers()
+                workerState,
+                transitWorker,
+                ctx.transit(),
+                ctx.slackProvider(),
+                ctx.accessPaths(),
+                ctx.roundProvider(),
+                ctx.calculator(),
+                ctx.createLifeCyclePublisher(),
+                ctx.timers(),
+                ctx.enableConstrainedTransfers()
         );
 
         long preRoute = System.currentTimeMillis();
@@ -165,44 +183,62 @@ public class SpiderwebResource {
 
         long postRoute = System.currentTimeMillis();
 
-        Map<Integer, AbstractStopArrival<TripSchedule>> accesses = new HashMap<>();
+        Multimap<Integer, AbstractStopArrival<TripSchedule>> accesses = HashMultimap.create();
 
-        Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> children = new HashMap<>();
+        Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> children =
+                new HashMap<>();
 
-//        for (int stop = 0; stop < ctx.nStops(); stop++) {
-//            StopArrivalParetoSet<TripSchedule> state = stops.stops[stop];
-//            if (state != null) {
-//                for (AbstractStopArrival<TripSchedule> arrival : state) {
-//                    addArrival(arrival, accesses, children);
-//                }
-//            }
-//        }
+        int visited = 0;
 
-        final List<Map<String, Object>> res = accesses.values().stream()
-                .filter(children::containsKey)
-                .map((AbstractStopArrival<TripSchedule> arrival) -> mapArrival(arrival, children))
-                .collect(Collectors.toList());
+        for (int stop = 0; stop < ctx.nStops(); stop++) {
+            StopArrivalParetoSet<TripSchedule> state = stops.stops[stop];
+            if (state != null) {
+                visited++;
+                state.stream()
+                        .min(Comparator.comparing(AbstractStopArrival::cost))
+                        .ifPresent(arrival -> addArrival(arrival, accesses, children));
+                // for (AbstractStopArrival<TripSchedule> arrival : state) {
+                //     addArrival(arrival, accesses, children);
+                // }
+            }
+        }
+
+        FeatureCollection res = new FeatureCollection();
+        List<Stop> stopsByIndex = transitLayer.getStopIndex().stopsByIndex;
+
+        for (var access : accesses.values()) {
+            if (children.containsKey(access)) {
+                mapArrival(access, res, stopsByIndex, children);
+            }
+        }
 
         long postProcess = System.currentTimeMillis();
 
-        LOG.warn("pre-access {}ms", preAccess- start);
-        LOG.warn("access {}ms", postAccess-preAccess);
-        LOG.warn("setup {}ms", preRoute-postAccess);
-        LOG.warn("routing {}ms", postRoute-preRoute);
-        LOG.warn("mapping {}ms", postProcess-postRoute);
+        LOG.warn("pre-access {}ms", preAccess - start);
+        LOG.warn("access {}ms", postAccess - preAccess);
+        LOG.warn("setup {}ms", preRoute - postAccess);
+        LOG.warn("routing {}ms", postRoute - preRoute);
+        LOG.warn("mapping {}ms", postProcess - postRoute);
+
+        LOG.warn("number of stops total {}", stopsByIndex.size());
+        LOG.warn("number of stops visited {}", visited);
+        LOG.warn("number of stops with children {}", children.size());
+        LOG.warn("number of features {}", res.getFeatures().size());
 
         return Response.ok().entity(res).build();
     }
 
     private void addArrival(
             AbstractStopArrival<TripSchedule> arrival,
-            Map<Integer, AbstractStopArrival<TripSchedule>> accesses,
-            Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> children) {
+            Multimap<Integer, AbstractStopArrival<TripSchedule>> accesses,
+            Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> children
+    ) {
         if (arrival.arrivedByAccess()) {
             accesses.put(arrival.stop(), arrival);
         } else {
             AbstractStopArrival<TripSchedule> previous = arrival.previous();
-            List<AbstractStopArrival<TripSchedule>> prevousList = children.computeIfAbsent(previous, k -> new LinkedList<>());
+            List<AbstractStopArrival<TripSchedule>> prevousList =
+                    children.computeIfAbsent(previous, k -> new LinkedList<>());
             if (!prevousList.contains(arrival)) {
                 prevousList.add(arrival);
                 addArrival(arrival.previous(), accesses, children);
@@ -210,85 +246,115 @@ public class SpiderwebResource {
         }
     }
 
-    private Map<String, Object> mapArrival(
+    private void mapArrival(
             AbstractStopArrival<TripSchedule> arrival,
+            FeatureCollection res,
+            List<Stop> stopsByIndex,
             Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> childMap
     ) {
-        final List<AbstractStopArrival<TripSchedule>> children = childMap.get(arrival);
+        final Stop stop = stopsByIndex.get(arrival.stop());
+        final AbstractStopArrival<TripSchedule> previous = arrival.previous();
+        final int arrivalTime = arrival.arrivalTime();
+        final Feature feature = new Feature();
+        feature.setId(String.valueOf(arrival.hashCode()));
+        feature.setGeometry(new Point(stop.getLon(), stop.getLat()));
+        if (arrival.arrivedByAccess()) {
+            feature.setProperties(Map.of(
+                    "mode", "access",
+                    "name", stop.getName(),
+                    "time", formatTime(arrivalTime)
+            ));
+        }
+        else if (arrival.arrivedByTransfer()) {
+            feature.setProperties(Map.of(
+                    "mode", "walk",
+                    "name", stop.getName(),
+                    "time", formatTime(arrivalTime),
+                    "parent", previous.hashCode()
+                    ));
+        } else if (arrival.arrivedByTransit()) {
+            TripSchedule trip = arrival.transitPath().trip();
+            feature.setProperties(Map.of(
+                    "mode", trip.getOriginalTripPattern().getMode().name(),
+                    "trip", trip.getOriginalTripTimes().getTrip().getId(),
+                    "route", trip.getOriginalTripTimes().getTrip().getRoute().getId(),
+                    "name", stop.getName(),
+                    "time", formatTime(arrivalTime),
+                    "departureTime", formatTime(trip.departure(
+                            trip.findDepartureStopPosition(
+                                    arrival.previous().arrivalTime(),
+                                    arrival.previous().stop()
+                            ))),
+                    "parent", previous.hashCode()
+            ));
+        } else {
+            LOG.warn("unknown arrival {}", arrival);
+            feature.setProperties(Map.of(
+                    "name", stop.getName(),
+                    "time", formatTime(arrivalTime),
+                    "parent", previous.hashCode()
+            ));
+        }
+        res.add(feature);
 
-        List<Map<String, Object>> childOutput = new LinkedList<>();
+        final List<AbstractStopArrival<TripSchedule>> children = childMap.get(arrival);
 
         if (children != null) {
             Map<TripSchedule, List<AbstractStopArrival<TripSchedule>>> groups = new HashMap<>();
             for (var child : children) {
                 if (child.arrivedByTransit()) {
-                    List<AbstractStopArrival<TripSchedule>> c = groups.computeIfAbsent(child.transitPath().trip(), k -> new LinkedList<>());
+                    List<AbstractStopArrival<TripSchedule>> c =
+                            groups.computeIfAbsent(
+                                    child.transitPath().trip(),
+                                    k -> new LinkedList<>()
+                            );
                     c.add(child);
-                } else {
-                    childOutput.add(mapArrival(child, childMap));
                 }
+                mapArrival(child, res, stopsByIndex, childMap);
             }
             for (Map.Entry<TripSchedule, List<AbstractStopArrival<TripSchedule>>> group : groups.entrySet()) {
                 TripSchedule trip = group.getKey();
-                final int[] stopIndexes = ((TripPatternForDates) trip.pattern()).getTripPattern().getStopIndexes();
-                List<AbstractStopArrival<TripSchedule>> stops = group.getValue().stream()
-                        .sorted(Comparator.comparing(a -> ArrayUtils.indexOf(stopIndexes, a.stop())))
-                        .collect(Collectors.toList());
 
-                childOutput.add(Map.of(
-                    "mode", trip.getOriginalTripPattern().getMode().name(),
-                    "trip", trip.getOriginalTripTimes().getTrip().getId(),
-                    "route", trip.getOriginalTripTimes().getTrip().getRoute().getId(),
-                    "time", formatTime(trip.departure(trip.findDepartureStopPosition(arrival.arrivalTime(), arrival.stop()))),
-                    "children", stops.stream().map(s ->  mapArrival(s, childMap)).collect(Collectors.toList())
+                final int departureStopIndex = trip.findDepartureStopPosition(
+                        arrivalTime,
+                        arrival.stop()
+                );
+
+                final int arrivalStopIndex = group.getValue().stream()
+                        .mapToInt(a -> trip.findArrivalStopPosition(a.arrivalTime(), a.stop()))
+                        .max()
+                        .getAsInt();
+
+                final Feature lineFeature = new Feature();
+                final Trip originalTrip = trip.getOriginalTripTimes().getTrip();
+
+                final LineString line = new LineString();
+
+                for (int i = departureStopIndex; i < arrivalStopIndex; i++) {
+                    var geom = trip.getOriginalTripPattern().getHopGeometry(i);
+                    for (var coordinate : geom.getCoordinates()) {
+                        line.add(new LngLatAlt(coordinate.x, coordinate.y));
+                    }
+                }
+
+                lineFeature.setGeometry(line);
+
+                final Route route = originalTrip.getRoute();
+                lineFeature.setProperties(Map.of(
+                        "mode", route.getMode().name(),
+                        "trip", originalTrip.getId(),
+                        "route", route.getId(),
+                        "color", route.getColor() != null ? "#" + route.getColor() : "#888",
+                        "time", formatTime(trip.departure(
+                                departureStopIndex))
+
                 ));
+                res.add(lineFeature);
             }
-        }
-
-        if (arrival.arrivedByAccess()) {
-            return Map.of(
-                    "mode", "access",
-                    "stop", arrival.stop(),
-                    "children", childOutput
-            );
-        } else if (arrival.arrivedByTransfer()) {
-            return Map.of(
-                    "mode", "walk",
-                    "stop", arrival.stop(),
-                    "time", formatTime(arrival.arrivalTime()),
-                    "children", childOutput
-            );
-        } else {
-            return Map.of(
-                    "stop", arrival.stop(),
-                    "time", formatTime(arrival.arrivalTime()),
-                    "children", childOutput
-            );
         }
     }
 
     private String formatTime(int time) {
         return startOfTime.plusSeconds(time).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-    }
-
-    @GET
-    @Path("/stops")
-    public Response getStops() {
-        List<Map<String, Object>> stops = router.graph
-                .getRealtimeTransitLayer()
-                .getStopIndex()
-                .stopsByIndex
-                .stream()
-                .map(s -> Map.<String, Object>of(
-                        "id", s.getId(),
-                        "name", s.getName(),
-                        "lat", s.getLat(),
-                        "lon", s.getLon(),
-                        "parent", s.isPartOfStation() ? s.getParentStation().getId() : "null"
-
-                ))
-                .collect(Collectors.toList());
-
-        return Response.ok().entity(stops).build();
     }
 }

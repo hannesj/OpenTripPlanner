@@ -26,7 +26,7 @@ import org.opentripplanner.transit.raptor.util.BitSetIterator;
  * @param <T> The TripSchedule type defined by the user of the raptor API.
  */
 public final class Stops<T extends RaptorTripSchedule> {
-    private final StopArrivalParetoSet<T>[] stops;
+    public final StopArrivalParetoSet<T>[] stops;
     private final BitSet touchedStops;
     private final DebugHandlerFactory<T> debugHandlerFactory;
     private final DebugStopArrivalsStatistics debugStats;
