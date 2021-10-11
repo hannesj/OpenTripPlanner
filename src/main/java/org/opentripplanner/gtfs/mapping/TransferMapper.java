@@ -58,6 +58,8 @@ class TransferMapper {
    */
   private static final int FORBIDDEN = 3;
 
+  private static final int STAY_SEATED = 4;
+
 
   private final RouteMapper routeMapper;
 
@@ -91,6 +93,7 @@ class TransferMapper {
       case MIN_TIME:
         return TransferPriority.ALLOWED;
       case RECOMMENDED:
+      case STAY_SEATED:
         return TransferPriority.RECOMMENDED;
     }
     throw new IllegalArgumentException("Mapping missing for type: " + type);
@@ -166,7 +169,7 @@ class TransferMapper {
     var builder = TransferConstraint.create();
 
     builder.guaranteed(rhs.getTransferType() == GUARANTEED);
-    builder.staySeated(sameBlockId(fromTrip, toTrip));
+    builder.staySeated(rhs.getTransferType() == STAY_SEATED || sameBlockId(fromTrip, toTrip));
     builder.priority(mapTypeToPriority(rhs.getTransferType()));
 
     return builder.build();
