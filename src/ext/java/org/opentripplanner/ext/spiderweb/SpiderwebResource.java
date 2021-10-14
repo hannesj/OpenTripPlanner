@@ -3,8 +3,12 @@ package org.opentripplanner.ext.spiderweb;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Arrays;
 import java.util.stream.Stream;
+import javax.ws.rs.DefaultValue;
 import org.apache.commons.lang3.ArrayUtils;
 import org.geojson.Feature;
 import org.geojson.FeatureCollection;
@@ -21,14 +25,17 @@ import org.opentripplanner.routing.algorithm.raptor.transit.AccessEgress;
 import org.opentripplanner.routing.algorithm.raptor.transit.Transfer;
 import org.opentripplanner.routing.algorithm.raptor.transit.TransitLayer;
 import org.opentripplanner.routing.algorithm.raptor.transit.TripSchedule;
+import org.opentripplanner.routing.algorithm.raptor.transit.cost.RaptorCostConverter;
 import org.opentripplanner.routing.algorithm.raptor.transit.mappers.AccessEgressMapper;
 import org.opentripplanner.routing.algorithm.raptor.transit.mappers.DateMapper;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RaptorRoutingRequestTransitData;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RoutingRequestTransitDataProviderFilter;
+import org.opentripplanner.routing.algorithm.raptor.transit.request.TransferWithDuration;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.TripPatternForDates;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.standalone.server.OTPServer;
 import org.opentripplanner.standalone.server.Router;
 import org.opentripplanner.transit.raptor.api.request.RaptorProfile;
@@ -79,18 +86,31 @@ public class SpiderwebResource {
     private final ZonedDateTime startOfTime;
     private final long start;
     private final AccessEgressMapper accessEgressMapper;
+    private final int earliestDepartureTime;
+    private final Integer maxMinutes;
 
-    public SpiderwebResource(@Context OTPServer otpServer) {
+    public SpiderwebResource(
+            @Context OTPServer otpServer,
+            @QueryParam("lat") String lat,
+            @QueryParam("lon") String lon,
+            @QueryParam("time") String time,
+            @QueryParam("maxMinutes") @DefaultValue("60") Integer maxMinutes
+    ) {
         start = System.currentTimeMillis();
         router = otpServer.getRouter();
         routingRequest = router.defaultRoutingRequest.clone();
         routingRequest.modes.transitModes.remove(TransitMode.AIRPLANE);
+        routingRequest.from = new GenericLocation(Double.parseDouble(lat), Double.parseDouble(lon));
 
         final RoutingRequest transferRoutingRequest =
                 Transfer.prepareTransferRoutingRequest(routingRequest);
         transferRoutingRequest.setRoutingContext(router.graph, (Vertex) null, null);
 
-        now = Instant.now();
+        if (time != null) {
+            now = Instant.parse(time);
+        } else {
+            now = Instant.now();
+        }
 
         transitLayer = router.graph.getRealtimeTransitLayer();
         requestTransitDataProvider = new RaptorRoutingRequestTransitData(
@@ -102,20 +122,20 @@ public class SpiderwebResource {
                 transferRoutingRequest
         );
         startOfTime = requestTransitDataProvider.getStartOfTime();
+        earliestDepartureTime = DateMapper.secondsSinceStartOfTime(startOfTime, now);
         accessEgressMapper = new AccessEgressMapper(transitLayer.getStopIndex());
+        this.maxMinutes = maxMinutes;
     }
 
     @GET
     @Path("/")
-    public Response getNetwork(@QueryParam("lat") String lat, @QueryParam("lon") String lon) {
-
-        routingRequest.from = new GenericLocation(Double.parseDouble(lat), Double.parseDouble(lon));
-
+    public Response getNetwork() {
         long preAccess = System.currentTimeMillis();
 
         final RoutingRequest accessRequest = routingRequest.clone();
 
         accessRequest.setRoutingContext(router.graph);
+        accessRequest.maxAccessEgressDurationSeconds = Duration.ofMinutes(20).toSeconds();
 
         final Collection<AccessEgress> accessList = accessEgressMapper
                 .mapNearbyStops(AccessEgressRouter.streetSearch(
@@ -129,7 +149,7 @@ public class SpiderwebResource {
         final RaptorRequest<TripSchedule> request = new RaptorRequestBuilder<TripSchedule>()
                 .profile(RaptorProfile.MULTI_CRITERIA)
                 .searchParams()
-                .earliestDepartureTime(DateMapper.secondsSinceStartOfTime(startOfTime, now))
+                .earliestDepartureTime(earliestDepartureTime)
                 .addAccessPaths(accessList)
                 .searchOneIterationOnly()
                 .build();
@@ -195,7 +215,7 @@ public class SpiderwebResource {
             if (state != null) {
                 visited++;
                 state.stream()
-                        .min(Comparator.comparing(AbstractStopArrival::cost))
+                        .min(Comparator.comparing(this::getCombinedArrivalTimeCost))
                         .ifPresent(arrival -> addArrival(arrival, accesses, children));
                 // for (AbstractStopArrival<TripSchedule> arrival : state) {
                 //     addArrival(arrival, accesses, children);
@@ -228,6 +248,11 @@ public class SpiderwebResource {
         return Response.ok().entity(res).build();
     }
 
+    private int getCombinedArrivalTimeCost(AbstractStopArrival<TripSchedule> arrival) {
+        return arrival.arrivalTime() - earliestDepartureTime
+                + RaptorCostConverter.toOtpDomainCost(arrival.cost());
+    }
+
     private void addArrival(
             AbstractStopArrival<TripSchedule> arrival,
             Multimap<Integer, AbstractStopArrival<TripSchedule>> accesses,
@@ -258,28 +283,78 @@ public class SpiderwebResource {
         final Feature feature = new Feature();
         feature.setId(String.valueOf(arrival.hashCode()));
         feature.setGeometry(new Point(stop.getLon(), stop.getLat()));
+        final int duration = arrivalTime - earliestDepartureTime;
         if (arrival.arrivedByAccess()) {
+            if (duration <= maxMinutes * 60) {
+                final Feature lineFeature = new Feature();
+
+                final LineString line = new LineString();
+                for (var edge : new GraphPath(
+                        ((AccessEgress) arrival.accessPath().access()).getLastState()).edges) {
+                    var geometry = edge.getGeometry();
+                    if (geometry != null) {
+                        for (var point : geometry.getCoordinates()) {
+                            line.add(new LngLatAlt(point.x, point.y));
+                        }
+                    }
+                }
+                lineFeature.setGeometry(line);
+                lineFeature.setProperties(Map.of(
+                        "mode", "access",
+                        "color", "#888",
+                        "time", duration
+                ));
+                res.add(lineFeature);
+            }
             feature.setProperties(Map.of(
                     "mode", "access",
                     "name", stop.getName(),
+                    "color", "#888",
                     "time", formatTime(arrivalTime)
             ));
         }
         else if (arrival.arrivedByTransfer()) {
+            if (duration <= maxMinutes * 60) {
+                final Feature lineFeature = new Feature();
+
+                final LineString line = new LineString();
+                for (var edge : (
+                        (TransferWithDuration) arrival.transferPath()
+                                .transfer()
+                ).transfer().getEdges()) {
+                    var geometry = edge.getGeometry();
+                    if (geometry != null) {
+                        for (var point : geometry.getCoordinates()) {
+                            line.add(new LngLatAlt(point.x, point.y));
+                        }
+                    }
+                }
+                lineFeature.setGeometry(line);
+                lineFeature.setProperties(Map.of(
+                        "mode", "walk",
+                        "color", "#888",
+                        "time", duration
+                ));
+                res.add(lineFeature);
+            }
             feature.setProperties(Map.of(
                     "mode", "walk",
                     "name", stop.getName(),
                     "time", formatTime(arrivalTime),
+                    "color", "#888",
                     "parent", previous.hashCode()
                     ));
         } else if (arrival.arrivedByTransit()) {
             TripSchedule trip = arrival.transitPath().trip();
+            final Trip otpTrip = trip.getOriginalTripTimes().getTrip();
+            final Route route = otpTrip.getRoute();
             feature.setProperties(Map.of(
                     "mode", trip.getOriginalTripPattern().getMode().name(),
-                    "trip", trip.getOriginalTripTimes().getTrip().getId(),
-                    "route", trip.getOriginalTripTimes().getTrip().getRoute().getId(),
+                    "trip", otpTrip.getTripHeadsign() != null ? otpTrip.getTripHeadsign() : "",
+                    "route", getRouteName(route),
                     "name", stop.getName(),
                     "time", formatTime(arrivalTime),
+                    "color", route.getColor() != null ? "#" + route.getColor() : "#888",
                     "departureTime", formatTime(trip.departure(
                             trip.findDepartureStopPosition(
                                     arrival.previous().arrivalTime(),
@@ -312,9 +387,13 @@ public class SpiderwebResource {
                 }
                 mapArrival(child, res, stopsByIndex, childMap);
             }
+
+            if (duration > maxMinutes * 60) {return;}
+
             for (Map.Entry<TripSchedule, List<AbstractStopArrival<TripSchedule>>> group : groups.entrySet()) {
                 TripSchedule trip = group.getKey();
 
+                final Trip originalTrip = trip.getOriginalTripTimes().getTrip();
                 final int departureStopIndex = trip.findDepartureStopPosition(
                         arrivalTime,
                         arrival.stop()
@@ -325,33 +404,43 @@ public class SpiderwebResource {
                         .max()
                         .getAsInt();
 
-                final Feature lineFeature = new Feature();
-                final Trip originalTrip = trip.getOriginalTripTimes().getTrip();
-
-                final LineString line = new LineString();
-
                 for (int i = departureStopIndex; i < arrivalStopIndex; i++) {
+                    final int arrivalDuration = trip.arrival(i + 1) - earliestDepartureTime;
+                    // if (arrivalDuration > maxMinutes * 60) {break;}
+                    final Feature lineFeature = new Feature();
+
+                    final LineString line = new LineString();
+
                     var geom = trip.getOriginalTripPattern().getHopGeometry(i);
                     for (var coordinate : geom.getCoordinates()) {
                         line.add(new LngLatAlt(coordinate.x, coordinate.y));
                     }
+                    lineFeature.setGeometry(line);
+                    final Route route = originalTrip.getRoute();
+                    lineFeature.setProperties(Map.of(
+                            "mode", route.getMode().name(),
+                            "color", route.getColor() != null ? "#" + route.getColor() : "#888",
+                            "time", arrivalDuration
+                    ));
+                    res.add(lineFeature);
                 }
 
-                lineFeature.setGeometry(line);
-
-                final Route route = originalTrip.getRoute();
-                lineFeature.setProperties(Map.of(
-                        "mode", route.getMode().name(),
-                        "trip", originalTrip.getId(),
-                        "route", route.getId(),
-                        "color", route.getColor() != null ? "#" + route.getColor() : "#888",
-                        "time", formatTime(trip.departure(
-                                departureStopIndex))
-
-                ));
-                res.add(lineFeature);
             }
         }
+    }
+
+    private String getRouteName(Route route) {
+        StringBuilder builder = new StringBuilder();
+        if (route.getShortName() != null) {
+            builder.append(route.getShortName());
+            if (route.getLongName() != null) {
+                builder.append(" — ");
+            }
+        }
+        if (route.getLongName() != null) {
+            builder.append(route.getLongName());
+        }
+        return builder.toString();
     }
 
     private String formatTime(int time) {
