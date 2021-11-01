@@ -1,15 +1,10 @@
 package org.opentripplanner.ext.spiderweb;
 
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
-import java.util.Arrays;
-import java.util.stream.Stream;
 import javax.ws.rs.DefaultValue;
-import org.apache.commons.lang3.ArrayUtils;
 import org.geojson.Feature;
 import org.geojson.FeatureCollection;
 import org.geojson.LineString;
@@ -31,7 +26,6 @@ import org.opentripplanner.routing.algorithm.raptor.transit.mappers.DateMapper;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RaptorRoutingRequestTransitData;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RoutingRequestTransitDataProviderFilter;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.TransferWithDuration;
-import org.opentripplanner.routing.algorithm.raptor.transit.request.TripPatternForDates;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Vertex;
@@ -70,7 +64,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Path("/routers/{ignoreRouterId}/spiderweb")
 @Produces(MediaType.APPLICATION_JSON)
@@ -87,7 +80,7 @@ public class SpiderwebResource {
     private final long start;
     private final AccessEgressMapper accessEgressMapper;
     private final int earliestDepartureTime;
-    private final Integer maxMinutes;
+    private final int latestArrivalTime;
 
     public SpiderwebResource(
             @Context OTPServer otpServer,
@@ -123,8 +116,8 @@ public class SpiderwebResource {
         );
         startOfTime = requestTransitDataProvider.getStartOfTime();
         earliestDepartureTime = DateMapper.secondsSinceStartOfTime(startOfTime, now);
+        latestArrivalTime = DateMapper.secondsSinceStartOfTime(startOfTime, now.plus(maxMinutes, ChronoUnit.MINUTES));
         accessEgressMapper = new AccessEgressMapper(transitLayer.getStopIndex());
-        this.maxMinutes = maxMinutes;
     }
 
     @GET
@@ -150,6 +143,7 @@ public class SpiderwebResource {
                 .profile(RaptorProfile.MULTI_CRITERIA)
                 .searchParams()
                 .earliestDepartureTime(earliestDepartureTime)
+                .latestArrivalTime(latestArrivalTime)
                 .addAccessPaths(accessList)
                 .searchOneIterationOnly()
                 .build();
@@ -283,9 +277,8 @@ public class SpiderwebResource {
         final Feature feature = new Feature();
         feature.setId(String.valueOf(arrival.hashCode()));
         feature.setGeometry(new Point(stop.getLon(), stop.getLat()));
-        final int duration = arrivalTime - earliestDepartureTime;
         if (arrival.arrivedByAccess()) {
-            if (duration <= maxMinutes * 60) {
+            if (arrivalTime <= latestArrivalTime) {
                 final Feature lineFeature = new Feature();
 
                 final LineString line = new LineString();
@@ -302,7 +295,7 @@ public class SpiderwebResource {
                 lineFeature.setProperties(Map.of(
                         "mode", "access",
                         "color", "#888",
-                        "time", duration
+                        "time", arrivalTime - earliestDepartureTime
                 ));
                 res.add(lineFeature);
             }
@@ -314,7 +307,7 @@ public class SpiderwebResource {
             ));
         }
         else if (arrival.arrivedByTransfer()) {
-            if (duration <= maxMinutes * 60) {
+            if (arrivalTime <= latestArrivalTime) {
                 final Feature lineFeature = new Feature();
 
                 final LineString line = new LineString();
@@ -333,7 +326,7 @@ public class SpiderwebResource {
                 lineFeature.setProperties(Map.of(
                         "mode", "walk",
                         "color", "#888",
-                        "time", duration
+                        "time", arrivalTime - earliestDepartureTime
                 ));
                 res.add(lineFeature);
             }
@@ -387,8 +380,6 @@ public class SpiderwebResource {
                 }
                 mapArrival(child, res, stopsByIndex, childMap);
             }
-
-            if (duration > maxMinutes * 60) {return;}
 
             for (Map.Entry<TripSchedule, List<AbstractStopArrival<TripSchedule>>> group : groups.entrySet()) {
                 TripSchedule trip = group.getKey();
