@@ -110,6 +110,7 @@ public class SpiderwebResource {
                 router.graph.getTransferService(),
                 transitLayer,
                 now,
+                0,
                 1,
                 new RoutingRequestTransitDataProviderFilter(routingRequest, router.graph.index),
                 transferRoutingRequest
