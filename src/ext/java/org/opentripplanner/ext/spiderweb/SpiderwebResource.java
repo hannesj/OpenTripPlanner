@@ -15,6 +15,7 @@ import org.opentripplanner.model.Route;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.TransitMode;
 import org.opentripplanner.model.Trip;
+import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.routing.algorithm.raptor.router.street.AccessEgressRouter;
 import org.opentripplanner.routing.algorithm.raptor.transit.AccessEgress;
 import org.opentripplanner.routing.algorithm.raptor.transit.Transfer;
@@ -26,6 +27,7 @@ import org.opentripplanner.routing.algorithm.raptor.transit.mappers.DateMapper;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RaptorRoutingRequestTransitData;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RoutingRequestTransitDataProviderFilter;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.TransferWithDuration;
+import org.opentripplanner.routing.algorithm.raptor.transit.request.TripPatternForDates;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Vertex;
@@ -35,6 +37,9 @@ import org.opentripplanner.standalone.server.Router;
 import org.opentripplanner.transit.raptor.api.request.RaptorProfile;
 import org.opentripplanner.transit.raptor.api.request.RaptorRequest;
 import org.opentripplanner.transit.raptor.api.request.RaptorRequestBuilder;
+import org.opentripplanner.transit.raptor.api.transit.RaptorConstrainedTripScheduleBoardingSearch;
+import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrAlightEvent;
+import org.opentripplanner.transit.raptor.api.transit.TransitArrival;
 import org.opentripplanner.transit.raptor.rangeraptor.RangeRaptorWorker;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.McRangeRaptorWorkerState;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.McTransitWorker;
@@ -45,6 +50,7 @@ import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.heuristic.He
 import org.opentripplanner.transit.raptor.rangeraptor.path.DestinationArrivalPaths;
 import org.opentripplanner.transit.raptor.rangeraptor.path.configure.PathConfig;
 import org.opentripplanner.transit.raptor.rangeraptor.transit.SearchContext;
+import org.opentripplanner.transit.raptor.rangeraptor.transit.TransitCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +80,6 @@ public class SpiderwebResource {
     private final Router router;
     private final RoutingRequest routingRequest;
     private final TransitLayer transitLayer;
-    private final Instant now;
     private final RaptorRoutingRequestTransitData requestTransitDataProvider;
     private final ZonedDateTime startOfTime;
     private final long start;
@@ -99,9 +104,11 @@ public class SpiderwebResource {
                 Transfer.prepareTransferRoutingRequest(routingRequest);
         transferRoutingRequest.setRoutingContext(router.graph, (Vertex) null, null);
 
+        Instant now;
         if (time != null) {
             now = Instant.parse(time);
-        } else {
+        }
+        else {
             now = Instant.now();
         }
 
@@ -117,7 +124,10 @@ public class SpiderwebResource {
         );
         startOfTime = requestTransitDataProvider.getStartOfTime();
         earliestDepartureTime = DateMapper.secondsSinceStartOfTime(startOfTime, now);
-        latestArrivalTime = DateMapper.secondsSinceStartOfTime(startOfTime, now.plus(maxMinutes, ChronoUnit.MINUTES));
+        latestArrivalTime = DateMapper.secondsSinceStartOfTime(
+                startOfTime,
+                now.plus(maxMinutes, ChronoUnit.MINUTES)
+        );
         accessEgressMapper = new AccessEgressMapper(transitLayer.getStopIndex());
     }
 
@@ -147,6 +157,7 @@ public class SpiderwebResource {
                 .latestArrivalTime(latestArrivalTime)
                 .addAccessPaths(accessList)
                 .searchOneIterationOnly()
+                .constrainedTransfersEnabled(true)
                 .build();
 
         final SearchContext<TripSchedule> ctx =
@@ -255,7 +266,8 @@ public class SpiderwebResource {
     ) {
         if (arrival.arrivedByAccess()) {
             accesses.put(arrival.stop(), arrival);
-        } else {
+        }
+        else {
             AbstractStopArrival<TripSchedule> previous = arrival.previous();
             List<AbstractStopArrival<TripSchedule>> prevousList =
                     children.computeIfAbsent(previous, k -> new LinkedList<>());
@@ -337,11 +349,50 @@ public class SpiderwebResource {
                     "time", formatTime(arrivalTime),
                     "color", "#888",
                     "parent", previous.hashCode()
-                    ));
-        } else if (arrival.arrivedByTransit()) {
+            ));
+        }
+        else if (arrival.arrivedByTransit()) {
             TripSchedule trip = arrival.transitPath().trip();
             final Trip otpTrip = trip.getOriginalTripTimes().getTrip();
             final Route route = otpTrip.getRoute();
+            var previousTransit = arrival.previous().mostResentTransitArrival();
+
+            int previousArrivalStopIndex = -1;
+
+            if (previousTransit != null) {
+                final TripSchedule previousTrip = previousTransit.trip();
+                previousArrivalStopIndex = previousTrip.findArrivalStopPosition(
+                        previousTransit.arrivalTime(),
+                        previousTransit.stop()
+                );
+            }
+            ConstrainedTransfer tx = null;
+            int stopPosition = -1;
+            if (previousArrivalStopIndex != -1) {
+                stopPosition = trip.findDepartureStopPosition(
+                        previousTransit.arrivalTime(),
+                        arrival.previous().stop()
+                );
+                tx = router.graph.getTransferService().findTransfer(
+                        null,
+                        null,
+                        previousTransit.trip().getOriginalTripTimes().getTrip(),
+                        otpTrip,
+                        previousArrivalStopIndex,
+                        stopPosition
+                );
+            }
+
+
+            boolean staySeated;
+            if (tx != null) {
+                staySeated = tx.getTransferConstraint().isStaySeated();
+
+            } else {
+                staySeated = false;
+            }
+
+
             feature.setProperties(Map.of(
                     "mode", trip.getOriginalTripPattern().getMode().name(),
                     "trip", otpTrip.getTripHeadsign() != null ? otpTrip.getTripHeadsign() : "",
@@ -349,14 +400,11 @@ public class SpiderwebResource {
                     "name", stop.getName(),
                     "time", formatTime(arrivalTime),
                     "color", route.getColor() != null ? "#" + route.getColor() : "#888",
-                    "departureTime", formatTime(trip.departure(
-                            trip.findDepartureStopPosition(
-                                    arrival.previous().arrivalTime(),
-                                    arrival.previous().stop()
-                            ))),
-                    "parent", previous.hashCode()
+                    "parent", (staySeated ? previousTransit : previous).hashCode(),
+                    "staySeated", staySeated
             ));
-        } else {
+        }
+        else {
             LOG.warn("unknown arrival {}", arrival);
             feature.setProperties(Map.of(
                     "name", stop.getName(),
@@ -382,14 +430,43 @@ public class SpiderwebResource {
                 mapArrival(child, res, stopsByIndex, childMap);
             }
 
+            final TransitArrival<TripSchedule> previousTransit = arrival.mostResentTransitArrival();
+            int previousArrivalStopIndex = -1;
+
+            if (previousTransit != null) {
+                final TripSchedule previousTrip = previousTransit.trip();
+                previousArrivalStopIndex = previousTrip.findArrivalStopPosition(
+                        previousTransit.arrivalTime(),
+                        previousTransit.stop()
+                );
+            }
+
             for (Map.Entry<TripSchedule, List<AbstractStopArrival<TripSchedule>>> group : groups.entrySet()) {
                 TripSchedule trip = group.getKey();
 
                 final Trip originalTrip = trip.getOriginalTripTimes().getTrip();
-                final int departureStopIndex = trip.findDepartureStopPosition(
+
+                ConstrainedTransfer tx = null;
+                int stopPosition = -1;
+                if (previousArrivalStopIndex != -1) {
+                    stopPosition = trip.findDepartureStopPosition(
+                            previousTransit.arrivalTime(),
+                            arrival.stop()
+                    );
+                    tx = router.graph.getTransferService().findTransfer(
+                            null,
+                            null,
+                            previousTransit.trip().getOriginalTripTimes().getTrip(),
+                            originalTrip,
+                            previousArrivalStopIndex,
+                            stopPosition
+                    );
+                }
+
+                final int departureStopIndex = tx == null ? trip.findDepartureStopPosition(
                         arrivalTime,
                         arrival.stop()
-                );
+                ) : stopPosition;
 
                 final int arrivalStopIndex = group.getValue().stream()
                         .mapToInt(a -> trip.findArrivalStopPosition(a.arrivalTime(), a.stop()))
@@ -412,7 +489,8 @@ public class SpiderwebResource {
                     lineFeature.setProperties(Map.of(
                             "mode", route.getMode().name(),
                             "color", route.getColor() != null ? "#" + route.getColor() : "#888",
-                            "time", arrivalDuration
+                            "time", arrivalDuration,
+                            "staySeated", tx != null && tx.getTransferConstraint().isStaySeated()
                     ));
                     res.add(lineFeature);
                 }
