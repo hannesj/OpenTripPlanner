@@ -16,7 +16,7 @@ public class TripDegenerate implements DataImportIssue {
     
     @Override
     public String getMessage() {
-        return String.format(FMT, trip);
+        return String.format(FMT, trip.getId());
     }
 
 }

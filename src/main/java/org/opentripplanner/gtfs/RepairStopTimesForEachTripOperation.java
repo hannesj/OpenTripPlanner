@@ -211,12 +211,14 @@ public class RepairStopTimesForEachTripOperation {
             }
             */
             // sanity-check the hop
-            if (st0.getArrivalTime() == st1.getArrivalTime() || st0.getDepartureTime() == st1
-                    .getDepartureTime()) {
+            if (st0.getDepartureTime() == st1.getArrivalTime()) {
                 LOG.trace("{} {}", st0, st1);
-                // series of identical stop times at different stops
-                issueStore.add(new HopZeroTime((float) hopDistance, st1.getTrip(),
-                                st1.getStopSequence()));
+                // series of identical stop times at different stops. Tolerate if stops are relatively close
+                if (hopDistance > 500) {
+                    issueStore.add(new HopZeroTime((float) hopDistance, st1.getTrip(),
+                            st1.getStopSequence()
+                    ));
+                }
             } else if (hopSpeed > 45) {
                 // 45 m/sec ~= 100 miles/hr
                 // elapsed time of 0 will give speed of +inf
