@@ -139,7 +139,7 @@ public class SpiderwebResource {
         final RoutingRequest accessRequest = routingRequest.clone();
 
         accessRequest.setRoutingContext(router.graph);
-        accessRequest.maxAccessEgressDurationSeconds = Duration.ofMinutes(20).toSeconds();
+        accessRequest.maxAccessEgressDurationSeconds = Duration.ofMinutes(45).toSeconds();
 
         final Collection<AccessEgress> accessList = accessEgressMapper
                 .mapNearbyStops(AccessEgressRouter.streetSearch(
