@@ -501,6 +501,10 @@ public class SpiderwebResource {
 
     private String getRouteName(Route route) {
         StringBuilder builder = new StringBuilder();
+        if (route.getMode().equals(TransitMode.BUS)) {
+            builder.append(route.getAgency().getName());
+            builder.append(" ");
+        }
         if (route.getShortName() != null) {
             builder.append(route.getShortName());
             if (route.getLongName() != null) {
