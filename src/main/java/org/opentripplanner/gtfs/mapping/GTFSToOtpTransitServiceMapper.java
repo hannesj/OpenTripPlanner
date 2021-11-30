@@ -83,18 +83,20 @@ public class GTFSToOtpTransitServiceMapper {
     ) {
         this.issueStore = issueStore;
         this.data = data;
+
+        translationService = TranslationServiceDataFactoryImpl.getTranslationService(data);
+
         feedInfoMapper = new FeedInfoMapper(feedId);
         agencyMapper = new AgencyMapper(feedId);
         routeMapper = new RouteMapper(agencyMapper);
         tripMapper = new TripMapper(routeMapper);
         bookingRuleMapper = new BookingRuleMapper();
-        stopTimeMapper = new StopTimeMapper(stopMapper, locationMapper, locationGroupMapper, tripMapper, bookingRuleMapper);
+        stopTimeMapper = new StopTimeMapper(stopMapper, locationMapper, locationGroupMapper, tripMapper, bookingRuleMapper, translationService);
         frequencyMapper = new FrequencyMapper(tripMapper);
         fareRuleMapper = new FareRuleMapper(
             routeMapper, fareAttributeMapper
         );
 
-        translationService = TranslationServiceDataFactoryImpl.getTranslationService(data);
     }
 
     public OtpTransitServiceBuilder getBuilder() {
@@ -103,25 +105,25 @@ public class GTFSToOtpTransitServiceMapper {
 
     public void mapStopTripAndRouteDatantoBuilder() {
 
-        builder.getAgenciesById().addAll(agencyMapper.map(data.getAllAgencies().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Agency.class, entity)).collect(Collectors.toList())));
-        builder.getCalendarDates().addAll(serviceCalendarDateMapper.map(data.getAllCalendarDates().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.ServiceCalendarDate.class, entity)).collect(Collectors.toList())));
-        builder.getCalendars().addAll(serviceCalendarMapper.map(data.getAllCalendars().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.ServiceCalendar.class, entity)).collect(Collectors.toList())));
-        builder.getFareAttributes().addAll(fareAttributeMapper.map(data.getAllFareAttributes().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.FareAttribute.class, entity)).collect(Collectors.toList())));
-        builder.getFareRules().addAll(fareRuleMapper.map(data.getAllFareRules().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.FareRule.class, entity)).collect(Collectors.toList())));
-        builder.getFeedInfos().addAll(feedInfoMapper.map(data.getAllFeedInfos().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.FeedInfo.class, entity)).collect(Collectors.toList())));
-        builder.getFrequencies().addAll(frequencyMapper.map(data.getAllFrequencies().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Frequency.class, entity)).collect(Collectors.toList())));
-        builder.getRoutes().addAll(routeMapper.map(data.getAllRoutes().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Route.class, entity)).collect(Collectors.toList())));
+        builder.getAgenciesById().addAll(agencyMapper.map(data.getAllAgencies().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Agency.class, entity)).collect(Collectors.toList())));
+        builder.getCalendarDates().addAll(serviceCalendarDateMapper.map(data.getAllCalendarDates().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.ServiceCalendarDate.class, entity)).collect(Collectors.toList())));
+        builder.getCalendars().addAll(serviceCalendarMapper.map(data.getAllCalendars().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.ServiceCalendar.class, entity)).collect(Collectors.toList())));
+        builder.getFareAttributes().addAll(fareAttributeMapper.map(data.getAllFareAttributes().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.FareAttribute.class, entity)).collect(Collectors.toList())));
+        builder.getFareRules().addAll(fareRuleMapper.map(data.getAllFareRules().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.FareRule.class, entity)).collect(Collectors.toList())));
+        builder.getFeedInfos().addAll(feedInfoMapper.map(data.getAllFeedInfos().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.FeedInfo.class, entity)).collect(Collectors.toList())));
+        builder.getFrequencies().addAll(frequencyMapper.map(data.getAllFrequencies().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Frequency.class, entity)).collect(Collectors.toList())));
+        builder.getRoutes().addAll(routeMapper.map(data.getAllRoutes().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Route.class, entity)).collect(Collectors.toList())));
         for (ShapePoint shapePoint : shapePointMapper.map(data.getAllShapePoints())) {
             builder.getShapePoints().put(shapePoint.getShapeId(), shapePoint);
         }
 
         mapGtfsStopsToOtpTypes(data);
 
-        builder.getLocations().addAll(locationMapper.map(data.getAllLocations().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Location.class, entity)).collect(Collectors.toList())));
+        builder.getLocations().addAll(locationMapper.map(data.getAllLocations().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Location.class, entity)).collect(Collectors.toList())));
         builder.getLocationGroups().addAll(locationGroupMapper.map(data.getAllLocationGroups()));
         builder.getPathways().addAll(pathwayMapper.map(data.getAllPathways()));
-        builder.getStopTimesSortedByTrip().addAll(stopTimeMapper.map(data.getAllStopTimes().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.StopTime.class, entity)).collect(Collectors.toList())));
-        builder.getTripsById().addAll(tripMapper.map(data.getAllTrips().stream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Trip.class, entity)).collect(Collectors.toList())));
+        builder.getStopTimesSortedByTrip().addAll(stopTimeMapper.map(data.getAllStopTimes().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.StopTime.class, entity)).collect(Collectors.toList())));
+        builder.getTripsById().addAll(tripMapper.map(data.getAllTrips().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Trip.class, entity)).collect(Collectors.toList())));
 
         mapAndAddTransfersToBuilder();
     }

@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.Collection;
 import java.util.Collections;
 import org.junit.Test;
+import org.onebusaway.gtfs.impl.translation.TranslationServiceImpl;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.StopTime;
@@ -77,7 +78,8 @@ public class StopTimesMapperTest {
             locationMapper,
             locationGroupMapper,
             new TripMapper(new RouteMapper(new AgencyMapper(FEED_ID))),
-            bookingRuleMapper
+            bookingRuleMapper,
+            new TranslationServiceImpl()
     );
 
     @Test

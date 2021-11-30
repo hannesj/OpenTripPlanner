@@ -3,6 +3,8 @@ package org.opentripplanner.gtfs.mapping;
 import org.onebusaway.gtfs.model.Location;
 import org.onebusaway.gtfs.model.LocationGroup;
 import org.onebusaway.gtfs.model.Stop;
+import org.onebusaway.gtfs.model.Trip;
+import org.onebusaway.gtfs.services.translation.TranslationService;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.util.MapUtils;
@@ -23,6 +25,7 @@ class StopTimeMapper {
 
     private final TripMapper tripMapper;
     private final BookingRuleMapper bookingRuleMapper;
+    private TranslationService translationService;
 
     private final Map<org.onebusaway.gtfs.model.StopTime, StopTime> mappedStopTimes = new HashMap<>();
 
@@ -31,13 +34,15 @@ class StopTimeMapper {
             LocationMapper locationMapper,
             LocationGroupMapper locationGroupMapper,
             TripMapper tripMapper,
-            BookingRuleMapper bookingRuleMapper
+            BookingRuleMapper bookingRuleMapper,
+            TranslationService translationService
     ) {
         this.stopMapper = stopMapper;
         this.locationMapper = locationMapper;
         this.locationGroupMapper = locationGroupMapper;
         this.tripMapper = tripMapper;
         this.bookingRuleMapper = bookingRuleMapper;
+        this.translationService = translationService;
     }
 
     Collection<StopTime> map(Collection<org.onebusaway.gtfs.model.StopTime> times) {
@@ -52,7 +57,7 @@ class StopTimeMapper {
     private StopTime doMap(org.onebusaway.gtfs.model.StopTime rhs) {
         StopTime lhs = new StopTime();
 
-        lhs.setTrip(tripMapper.map(rhs.getTrip()));
+        lhs.setTrip(tripMapper.map(translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Trip.class, rhs.getTrip())));
         if (rhs.getStop() instanceof Stop){
             lhs.setStop(stopMapper.map((Stop) rhs.getStop()));
         } else if (rhs.getStop() instanceof Location) {
