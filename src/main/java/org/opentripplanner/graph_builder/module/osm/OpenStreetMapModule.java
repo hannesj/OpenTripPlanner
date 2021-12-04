@@ -281,10 +281,6 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             buildBasicGraph();
             buildWalkableAreas(skipVisibility, platformEntriesLinking);
 
-            if(platformEntriesLinking){
-                linkPlatformEntries(edgeFactory, customNamer);
-            }
-
             if (staticParkAndRide) {
                 buildParkAndRideAreas();
             }
@@ -377,7 +373,8 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             }
             List<AreaGroup> areaGroups = groupAreas(osmdb.getWalkableAreas());
             WalkableAreaBuilder walkableAreaBuilder = new WalkableAreaBuilder(graph, osmdb,
-                    wayPropertySet, edgeFactory, this, issueStore, maxAreaNodes
+                    wayPropertySet, edgeFactory, this, issueStore, maxAreaNodes,
+                    platformEntriesLinking
             );
             if (skipVisibility) {
                 for (AreaGroup group : areaGroups) {
@@ -390,21 +387,11 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                     areaGroups.size()
                 );
                 for (AreaGroup group : areaGroups) {
-                    walkableAreaBuilder.buildWithVisibility(group, platformEntriesLinking);
+                    walkableAreaBuilder.buildWithVisibility(group);
                     //Keep lambda! A method-ref would causes incorrect class and line number to be logged
                     progress.step(m -> LOG.info(m));
                 }
                 LOG.info(progress.completeMessage());
-
-                if(platformEntriesLinking){
-                    List<Area> platforms = osmdb.getWalkableAreas().stream().
-                            filter(area -> "platform".equals(area.parent.getTag("public_transport"))).
-                            collect(Collectors.toList());
-                    List<AreaGroup> platformGroups = groupAreas(platforms);
-                    for (AreaGroup group : platformGroups) {
-                        walkableAreaBuilder.buildWithoutVisibility(group);
-                    }
-                }
             }
 
             // running a request caches the timezone; we need to clear it now so that when agencies are loaded
@@ -562,11 +549,30 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                     String.format("%s/%d", entity.getClass().getSimpleName(), entity.getId())
             );
 
+            var tags = new ArrayList<String>();
+
+            tags.add(isCarParkAndRide ? "osm:amenity=parking" : "osm:amenity=bicycle_parking");
+
+            if (entity.isTagTrue("fee")) {
+                tags.add("osm:fee");
+            }
+            if (entity.hasTag("supervised") && !entity.isTagTrue("supervised")) {
+                tags.add("osm:supervised");
+            }
+            if (entity.hasTag("covered") && !entity.isTagFalse("covered")) {
+                tags.add("osm:covered");
+            }
+            if (entity.hasTag("surveillance") && !entity.isTagFalse("surveillance")) {
+                tags.add("osm:surveillance");
+            }
+
             return VehicleParking.builder()
                     .id(id)
                     .name(creativeName)
                     .x(lon)
                     .y(lat)
+                    .tags(tags)
+                    .detailsUrl(entity.getTag("website"))
                     .bicyclePlaces(bicyclePlaces)
                     .carPlaces(carPlaces)
                     .wheelchairAccessibleCarPlaces(wheelchairAccessibleCarPlaces)
@@ -604,7 +610,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             }
 
             accessVertices.addAll(
-                    ring.holes.stream()
+                    ring.getHoles().stream()
                             .flatMap(innerRing -> processVehicleParkingArea(innerRing, entity, envelope).stream())
                             .collect(Collectors.toList())
             );
@@ -858,12 +864,6 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             }
         }
 
-        private void linkPlatformEntries(StreetEdgeFactory factory, CustomNamer customNamer) {
-            PlatformLinker platformLinker = new PlatformLinker(graph, osmdb, factory, customNamer);
-            platformLinker.linkEntriesToPlatforms();
-
-        }
-
         private void buildElevatorEdges(Graph graph) {
             /* build elevator edges */
             for (Long nodeId : multiLevelNodes.keySet()) {
@@ -1082,7 +1082,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
                 }
             }
 
-            outerRing.holes.forEach(hole -> intersectAreaRingNodes(possibleIntersectionNodes, hole));
+            outerRing.getHoles().forEach(hole -> intersectAreaRingNodes(possibleIntersectionNodes, hole));
         }
 
         /**

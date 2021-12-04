@@ -82,6 +82,17 @@
 - Merge B+R and P+R functionality into vehicle parking [#3480](https://github.com/opentripplanner/OpenTripPlanner/pull/3480)
 - Remove AddMinSafeTransferCostFilter from itinerary-filter-chain [#3736](https://github.com/opentripplanner/OpenTripPlanner/pull/3736)
 - Add cost to maximize wait-time and avoid back-travel in optimize transfers [#3654](https://github.com/opentripplanner/OpenTripPlanner/pull/3654)
+- Calculate fares from itineraries not Raptor paths, calculate flex fares [#3743](https://github.com/opentripplanner/OpenTripPlanner/pull/3743)
+- Logging first time instance reports it is ready to use [#3733](https://github.com/opentripplanner/OpenTripPlanner/pull/3733)
+- Allow limiting the used vehicle rentals and parkings [#3746](https://github.com/opentripplanner/OpenTripPlanner/pull/3746)
+- Add support for car and scooter rental modes [#3706](https://github.com/opentripplanner/OpenTripPlanner/pull/3706)
+- Extra stop priority cost in optimized transfer service [#3731](https://github.com/opentripplanner/OpenTripPlanner/pull/3731)
+- Remove old visibility graph library from walkable area builder [#3753](https://github.com/opentripplanner/OpenTripPlanner/pull/3753)
+- Update GtfsRealtime and include severity, effect and cause from GTFS RT [#3747](https://github.com/opentripplanner/OpenTripPlanner/pull/3747)
+- Handle miscellaneous service as BUS instead of crashing build [#3755](https://github.com/opentripplanner/OpenTripPlanner/pull/3755)
+- Update all timers to micrometer instances [#3744](https://github.com/opentripplanner/OpenTripPlanner/pull/3744)
+- Bugfix: ClassCastException when planning flex routes [#3762](https://github.com/opentripplanner/OpenTripPlanner/pull/3762)
+- Add mode from parent StopPlace for Quays in Netex mapper [#3751](https://github.com/opentripplanner/OpenTripPlanner/pull/3751)
 [](AUTOMATIC_CHANGELOG_PLACEHOLDER_DO_NOT_REMOVE)
 
 

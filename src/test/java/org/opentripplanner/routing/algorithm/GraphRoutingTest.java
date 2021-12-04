@@ -2,6 +2,7 @@ package org.opentripplanner.routing.algorithm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -37,6 +38,8 @@ import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
 import org.opentripplanner.routing.edgetype.StreetVehicleRentalLink;
 import org.opentripplanner.routing.edgetype.TemporaryFreeEdge;
 import org.opentripplanner.routing.edgetype.VehicleRentalEdge;
+import org.opentripplanner.routing.vehicle_rental.RentalVehicleType;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -44,8 +47,8 @@ import org.opentripplanner.routing.location.TemporaryStreetLocation;
 import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
+import org.opentripplanner.routing.vehicle_parking.VehicleParking.VehicleParkingEntranceCreator;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
 import org.opentripplanner.routing.vehicle_rental.VehicleRentalStation;
 import org.opentripplanner.routing.vertextype.ElevatorOffboardVertex;
 import org.opentripplanner.routing.vertextype.ElevatorOnboardVertex;
@@ -307,10 +310,14 @@ public abstract class GraphRoutingTest {
         ) {
             var vehicleRentalStation = new VehicleRentalStation();
             vehicleRentalStation.id = new FeedScopedId(network, id);
+            vehicleRentalStation.name = new NonLocalizedString(id);
             vehicleRentalStation.longitude = longitude;
             vehicleRentalStation.latitude = latitude;
             vehicleRentalStation.vehiclesAvailable = 2;
             vehicleRentalStation.spacesAvailable = 2;
+            final RentalVehicleType vehicleType = RentalVehicleType.getDefaultType(network);
+            vehicleRentalStation.vehicleTypesAvailable = Map.of(vehicleType, 2);
+            vehicleRentalStation.vehicleSpacesAvailable = Map.of(vehicleType, 2);
             vehicleRentalStation.isKeepingVehicleRentalAtDestinationAllowed = false;
             return vehicleRentalStation;
         }
@@ -325,7 +332,7 @@ public abstract class GraphRoutingTest {
                     graph,
                     vehicleRentalStationEntity(id, latitude, longitude, network)
             );
-            new VehicleRentalEdge(vertex);
+            new VehicleRentalEdge(vertex, RentalVehicleType.getDefaultType(network).formFactor);
             return vertex;
         }
 
@@ -349,11 +356,11 @@ public abstract class GraphRoutingTest {
             return List.of(link(from, to), link(to, from));
         }
 
-        public void vehicleParking(String id, double x, double y, boolean bicyclePlaces, boolean carPlaces, List<VehicleParking.VehicleParkingEntranceCreator> entrances) {
-            vehicleParking(id, x, y, bicyclePlaces, carPlaces, false, entrances);
+        public VehicleParking vehicleParking(String id, double x, double y, boolean bicyclePlaces, boolean carPlaces, List<VehicleParkingEntranceCreator> entrances, String ... tags) {
+            return vehicleParking(id, x, y, bicyclePlaces, carPlaces, false, entrances, tags);
         }
 
-        public void vehicleParking(String id, double x, double y, boolean bicyclePlaces, boolean carPlaces, boolean wheelchairAccessibleCarPlaces, List<VehicleParking.VehicleParkingEntranceCreator> entrances) {
+        public VehicleParking vehicleParking(String id, double x, double y, boolean bicyclePlaces, boolean carPlaces, boolean wheelchairAccessibleCarPlaces, List<VehicleParkingEntranceCreator> entrances, String ... tags) {
             var vehicleParking = VehicleParking.builder()
                 .id(new FeedScopedId(TEST_FEED_ID, id))
                 .x(x)
@@ -362,11 +369,13 @@ public abstract class GraphRoutingTest {
                 .carPlaces(carPlaces)
                 .entrances(entrances)
                 .wheelchairAccessibleCarPlaces(wheelchairAccessibleCarPlaces)
+                .tags(List.of(tags))
                 .build();
 
             var vertices = VehicleParkingHelper.createVehicleParkingVertices(graph, vehicleParking);
             VehicleParkingHelper.linkVehicleParkingEntrances(vertices);
             vertices.forEach(v -> biLink(v.getParkingEntrance().getVertex(), v));
+            return vehicleParking;
         }
 
         public VehicleParking.VehicleParkingEntranceCreator vehicleParkingEntrance(StreetVertex streetVertex, String id, boolean carAccessible, boolean walkAccessible) {
