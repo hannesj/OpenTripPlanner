@@ -27,18 +27,16 @@ import org.opentripplanner.routing.algorithm.raptor.transit.mappers.DateMapper;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RaptorRoutingRequestTransitData;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.RoutingRequestTransitDataProviderFilter;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.TransferWithDuration;
-import org.opentripplanner.routing.algorithm.raptor.transit.request.TripPatternForDates;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.spt.GraphPath;
+import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.standalone.server.OTPServer;
 import org.opentripplanner.standalone.server.Router;
 import org.opentripplanner.transit.raptor.api.request.RaptorProfile;
 import org.opentripplanner.transit.raptor.api.request.RaptorRequest;
 import org.opentripplanner.transit.raptor.api.request.RaptorRequestBuilder;
-import org.opentripplanner.transit.raptor.api.transit.RaptorConstrainedTripScheduleBoardingSearch;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrAlightEvent;
 import org.opentripplanner.transit.raptor.api.transit.TransitArrival;
 import org.opentripplanner.transit.raptor.rangeraptor.RangeRaptorWorker;
 import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.McRangeRaptorWorkerState;
@@ -50,7 +48,6 @@ import org.opentripplanner.transit.raptor.rangeraptor.multicriteria.heuristic.He
 import org.opentripplanner.transit.raptor.rangeraptor.path.DestinationArrivalPaths;
 import org.opentripplanner.transit.raptor.rangeraptor.path.configure.PathConfig;
 import org.opentripplanner.transit.raptor.rangeraptor.transit.SearchContext;
-import org.opentripplanner.transit.raptor.rangeraptor.transit.TransitCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,6 +154,7 @@ public class SpiderwebResource {
                 .latestArrivalTime(latestArrivalTime)
                 .addAccessPaths(accessList)
                 .searchOneIterationOnly()
+                .timetableEnabled(false)
                 .constrainedTransfersEnabled(true)
                 .build();
 
@@ -353,9 +351,10 @@ public class SpiderwebResource {
         }
         else if (arrival.arrivedByTransit()) {
             TripSchedule trip = arrival.transitPath().trip();
-            final Trip otpTrip = trip.getOriginalTripTimes().getTrip();
+            final TripTimes tripTimes = trip.getOriginalTripTimes();
+            final Trip otpTrip = tripTimes.getTrip();
             final Route route = otpTrip.getRoute();
-            var previousTransit = arrival.previous().mostResentTransitArrival();
+            var previousTransit = previous.mostResentTransitArrival();
 
             int previousArrivalStopIndex = -1;
 
@@ -367,11 +366,11 @@ public class SpiderwebResource {
                 );
             }
             ConstrainedTransfer tx = null;
-            int stopPosition = -1;
+            int stopPosition;
             if (previousArrivalStopIndex != -1) {
                 stopPosition = trip.findDepartureStopPosition(
                         previousTransit.arrivalTime(),
-                        arrival.previous().stop()
+                        previous.stop()
                 );
                 tx = router.graph.getTransferService().findTransfer(
                         null,
@@ -381,13 +380,15 @@ public class SpiderwebResource {
                         previousArrivalStopIndex,
                         stopPosition
                 );
+            } else {
+                stopPosition = trip.findDepartureStopPosition(previous.arrivalTime(), previous.stop());
             }
 
+            int departureTime = tripTimes.getDepartureTime(stopPosition);
 
             boolean staySeated;
             if (tx != null) {
                 staySeated = tx.getTransferConstraint().isStaySeated();
-
             } else {
                 staySeated = false;
             }
@@ -399,6 +400,7 @@ public class SpiderwebResource {
                     "route", getRouteName(route),
                     "name", stop.getName(),
                     "time", formatTime(arrivalTime),
+                    "departureTime", formatTime(departureTime),
                     "color", route.getColor() != null ? "#" + route.getColor() : "#888",
                     "parent", (staySeated ? previousTransit : previous).hashCode(),
                     "staySeated", staySeated
@@ -489,8 +491,7 @@ public class SpiderwebResource {
                     lineFeature.setProperties(Map.of(
                             "mode", route.getMode().name(),
                             "color", route.getColor() != null ? "#" + route.getColor() : "#888",
-                            "time", arrivalDuration,
-                            "staySeated", tx != null && tx.getTransferConstraint().isStaySeated()
+                            "time", arrivalDuration
                     ));
                     res.add(lineFeature);
                 }
