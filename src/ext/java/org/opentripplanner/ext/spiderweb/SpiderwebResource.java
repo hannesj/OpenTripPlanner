@@ -1,8 +1,14 @@
 package org.opentripplanner.ext.spiderweb;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import javax.ws.rs.DefaultValue;
 import org.geojson.Feature;
@@ -73,6 +79,8 @@ import java.util.Map;
 public class SpiderwebResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(SpiderwebResource.class);
+    private static final LoadingCache<CacheKey, RaptorRoutingRequestTransitData> transitDataCache =
+            CacheBuilder.newBuilder().maximumSize(10).build(cacheBuilder());
 
     private final Router router;
     private final RoutingRequest routingRequest;
@@ -97,10 +105,6 @@ public class SpiderwebResource {
         routingRequest.modes.transitModes.remove(TransitMode.AIRPLANE);
         routingRequest.from = new GenericLocation(Double.parseDouble(lat), Double.parseDouble(lon));
 
-        final RoutingRequest transferRoutingRequest =
-                Transfer.prepareTransferRoutingRequest(routingRequest);
-        transferRoutingRequest.setRoutingContext(router.graph, (Vertex) null, null);
-
         Instant now;
         if (time != null) {
             now = Instant.parse(time);
@@ -109,16 +113,16 @@ public class SpiderwebResource {
             now = Instant.now();
         }
 
+
+        // Make sure we have current transit layer in cache
         transitLayer = router.graph.getRealtimeTransitLayer();
-        requestTransitDataProvider = new RaptorRoutingRequestTransitData(
-                router.graph.getTransferService(),
-                transitLayer,
-                now,
-                0,
-                1,
-                new RoutingRequestTransitDataProviderFilter(routingRequest, router.graph.index),
-                transferRoutingRequest
-        );
+        ZoneId zoneId = transitLayer.getTransitDataZoneId();
+        LocalDate startDate = LocalDate.ofInstant(now, zoneId);
+        LocalDate endDate = LocalDate.ofInstant(now.plus(maxMinutes, ChronoUnit.MINUTES), zoneId);
+        Instant startOfDay = startDate.atStartOfDay(zoneId).toInstant();
+        int additionalDays = (int) Period.between(startDate, endDate).get(ChronoUnit.DAYS);
+        requestTransitDataProvider = transitDataCache.getUnchecked(new CacheKey(
+                router, transitLayer, startOfDay, additionalDays));
         startOfTime = requestTransitDataProvider.getStartOfTime();
         earliestDepartureTime = DateMapper.secondsSinceStartOfTime(startOfTime, now);
         latestArrivalTime = DateMapper.secondsSinceStartOfTime(
@@ -520,5 +524,70 @@ public class SpiderwebResource {
 
     private String formatTime(int time) {
         return startOfTime.plusSeconds(time).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    }
+    
+    private static class CacheKey {
+        private final Router router;
+        private final TransitLayer transitLayer;
+        private final Instant startOfDay;
+        private final int additionalDays;
+
+        private CacheKey(
+                Router router,
+                TransitLayer transitLayer,
+                Instant startOfDay,
+                int additionalDays
+        ) {
+            this.router = router;
+            this.transitLayer = transitLayer;
+            this.startOfDay = startOfDay;
+            this.additionalDays = additionalDays;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {return true;}
+            if (o == null || getClass() != o.getClass()) {return false;}
+
+            final CacheKey cacheKey = (CacheKey) o;
+
+            if (additionalDays != cacheKey.additionalDays) {return false;}
+            if (!router.equals(cacheKey.router)) {return false;}
+            if (!transitLayer.equals(cacheKey.transitLayer)) {return false;}
+            return startOfDay.equals(cacheKey.startOfDay);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = transitLayer.hashCode();
+            result = 31 * result + startOfDay.hashCode();
+            result = 31 * result + additionalDays;
+            return result;
+        }
+    }
+
+
+    private static CacheLoader<CacheKey, RaptorRoutingRequestTransitData> cacheBuilder() {
+        return new CacheLoader<>() {
+            @Override
+            public RaptorRoutingRequestTransitData load(CacheKey key) {
+                RoutingRequest routingRequest = key.router.defaultRoutingRequest.clone();
+                routingRequest.modes.transitModes.remove(TransitMode.AIRPLANE);
+
+                final RoutingRequest transferRoutingRequest =
+                        Transfer.prepareTransferRoutingRequest(routingRequest);
+                transferRoutingRequest.setRoutingContext(key.router.graph, (Vertex) null, null);
+
+                return new RaptorRoutingRequestTransitData(
+                        key.router.graph.getTransferService(),
+                        key.transitLayer,
+                        key.startOfDay,
+                        0,
+                        key.additionalDays,
+                        new RoutingRequestTransitDataProviderFilter(routingRequest, key.router.graph.index),
+                        transferRoutingRequest
+                );
+            }
+        };
     }
 }
