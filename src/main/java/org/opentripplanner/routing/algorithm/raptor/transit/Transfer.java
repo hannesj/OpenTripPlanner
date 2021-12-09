@@ -3,8 +3,13 @@ package org.opentripplanner.routing.algorithm.raptor.transit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.algorithm.raptor.transit.cost.RaptorCostConverter;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.TransferWithDuration;
 import org.opentripplanner.routing.api.request.RoutingRequest;
@@ -19,6 +24,8 @@ public class Transfer {
     private final int distanceMeters;
 
     private final List<Edge> edges;
+
+    private transient LineString geometry;
 
     public Transfer(int toStop, List<Edge> edges) {
         this.toStop = toStop;
@@ -41,6 +48,18 @@ public class Transfer {
             }
         }
         return coordinates;
+    }
+
+    public LineString getGeometry() {
+        if (geometry == null) {
+            geometry = GeometryUtils.concatenateLineStrings(
+                    edges.stream()
+                            .map(Edge::getGeometry)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList())
+            );
+        }
+        return geometry;
     }
 
     public int getToStop() { return toStop; }

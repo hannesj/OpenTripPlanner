@@ -11,16 +11,17 @@ import java.time.Period;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import javax.ws.rs.DefaultValue;
-import org.geojson.Feature;
-import org.geojson.FeatureCollection;
-import org.geojson.LineString;
-import org.geojson.LngLatAlt;
-import org.geojson.Point;
+import javax.ws.rs.core.StreamingOutput;
+import org.geotools.data.collection.ListFeatureCollection;
+import org.geotools.data.geobuf.GeobufFeature;
+import org.geotools.data.geobuf.GeobufFeatureCollection;
+import org.geotools.data.geobuf.GeobufGeometry;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.model.Route;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.TransitMode;
 import org.opentripplanner.model.Trip;
+import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.routing.algorithm.raptor.router.street.AccessEgressRouter;
 import org.opentripplanner.routing.algorithm.raptor.transit.AccessEgress;
@@ -75,7 +76,7 @@ import java.util.List;
 import java.util.Map;
 
 @Path("/routers/{ignoreRouterId}/spiderweb")
-@Produces(MediaType.APPLICATION_JSON)
+@Produces("application/protobuf")
 public class SpiderwebResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(SpiderwebResource.class);
@@ -231,7 +232,8 @@ public class SpiderwebResource {
             }
         }
 
-        FeatureCollection res = new FeatureCollection();
+        ListFeatureCollection res = new ListFeatureCollection(SpiderwebSimpleFeature.type);
+
         List<Stop> stopsByIndex = transitLayer.getStopIndex().stopsByIndex;
 
         for (var access : accesses.values()) {
@@ -239,6 +241,9 @@ public class SpiderwebResource {
                 mapArrival(access, res, stopsByIndex, children);
             }
         }
+
+        GeobufFeatureCollection geobufFeatureCollection = new GeobufFeatureCollection(new GeobufFeature(new GeobufGeometry(5, 2)));
+        StreamingOutput out = outputStream -> geobufFeatureCollection.encode(res, outputStream);
 
         long postProcess = System.currentTimeMillis();
 
@@ -251,9 +256,9 @@ public class SpiderwebResource {
         LOG.warn("number of stops total {}", stopsByIndex.size());
         LOG.warn("number of stops visited {}", visited);
         LOG.warn("number of stops with children {}", children.size());
-        LOG.warn("number of features {}", res.getFeatures().size());
+        LOG.warn("number of features {}", res.size());
 
-        return Response.ok().entity(res).build();
+        return Response.ok().entity(out).build();
     }
 
     private int getCombinedArrivalTimeCost(AbstractStopArrival<TripSchedule> arrival) {
@@ -282,75 +287,48 @@ public class SpiderwebResource {
 
     private void mapArrival(
             AbstractStopArrival<TripSchedule> arrival,
-            FeatureCollection res,
+            ListFeatureCollection res,
             List<Stop> stopsByIndex,
             Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> childMap
     ) {
         final Stop stop = stopsByIndex.get(arrival.stop());
         final AbstractStopArrival<TripSchedule> previous = arrival.previous();
         final int arrivalTime = arrival.arrivalTime();
-        final Feature feature = new Feature();
-        feature.setId(String.valueOf(arrival.hashCode()));
-        feature.setGeometry(new Point(stop.getLon(), stop.getLat()));
         if (arrival.arrivedByAccess()) {
             if (arrivalTime <= latestArrivalTime) {
-                final Feature lineFeature = new Feature();
-
-                final LineString line = new LineString();
-                for (var edge : new GraphPath(
-                        ((AccessEgress) arrival.accessPath().access()).getLastState()).edges) {
-                    var geometry = edge.getGeometry();
-                    if (geometry != null) {
-                        for (var point : geometry.getCoordinates()) {
-                            line.add(new LngLatAlt(point.x, point.y));
-                        }
-                    }
-                }
-                lineFeature.setGeometry(line);
-                lineFeature.setProperties(Map.of(
-                        "mode", "access",
-                        "color", "#888",
-                        "time", arrivalTime - earliestDepartureTime
+                final AccessEgress access = (AccessEgress) arrival.accessPath().access();
+                res.add(new WalkSpiderwebSimpleFeatureImpl(
+                    String.valueOf(access.hashCode()),
+                    new GraphPath(access.getLastState()).getGeometry(),
+                    "access",
+                    arrivalTime - earliestDepartureTime
                 ));
-                res.add(lineFeature);
             }
-            feature.setProperties(Map.of(
-                    "mode", "access",
-                    "name", stop.getName(),
-                    "color", "#888",
-                    "time", formatTime(arrivalTime)
+            res.add(new StopSpiderwebSimpleFeatureImpl(
+                    String.valueOf(arrival.hashCode()),
+                    stop,
+                    "access",
+                    formatTime(arrivalTime),
+                    null
             ));
         }
         else if (arrival.arrivedByTransfer()) {
             if (arrivalTime <= latestArrivalTime) {
-                final Feature lineFeature = new Feature();
-
-                final LineString line = new LineString();
-                for (var edge : (
-                        (TransferWithDuration) arrival.transferPath()
-                                .transfer()
-                ).transfer().getEdges()) {
-                    var geometry = edge.getGeometry();
-                    if (geometry != null) {
-                        for (var point : geometry.getCoordinates()) {
-                            line.add(new LngLatAlt(point.x, point.y));
-                        }
-                    }
-                }
-                lineFeature.setGeometry(line);
-                lineFeature.setProperties(Map.of(
-                        "mode", "walk",
-                        "color", "#888",
-                        "time", arrivalTime - earliestDepartureTime
+                final TransferWithDuration transfer = (TransferWithDuration) arrival.transferPath().transfer();
+                res.add(new WalkSpiderwebSimpleFeatureImpl(
+                    String.valueOf(transfer.transfer().hashCode()),
+                    transfer.transfer().getGeometry(),
+                    "walk",
+                    arrivalTime - earliestDepartureTime
                 ));
-                res.add(lineFeature);
             }
-            feature.setProperties(Map.of(
-                    "mode", "walk",
-                    "name", stop.getName(),
-                    "time", formatTime(arrivalTime),
-                    "color", "#888",
-                    "parent", previous.hashCode()
+
+            res.add(new StopSpiderwebSimpleFeatureImpl(
+                    String.valueOf(arrival.hashCode()),
+                    stop,
+                    "walk",
+                    formatTime(arrivalTime),
+                    previous.hashCode()
             ));
         }
         else if (arrival.arrivedByTransit()) {
@@ -397,110 +375,117 @@ public class SpiderwebResource {
                 staySeated = false;
             }
 
-
-            feature.setProperties(Map.of(
-                    "mode", trip.getOriginalTripPattern().getMode().name(),
-                    "trip", otpTrip.getTripHeadsign() != null ? otpTrip.getTripHeadsign() : "",
-                    "route", getRouteName(route),
-                    "name", stop.getName(),
-                    "time", formatTime(arrivalTime),
-                    "departureTime", formatTime(departureTime),
-                    "color", route.getColor() != null ? "#" + route.getColor() : "#888",
-                    "parent", (staySeated ? previousTransit : previous).hashCode(),
-                    "staySeated", staySeated
+            res.add(new StopSpiderwebSimpleFeatureImpl(
+                    String.valueOf(arrival.hashCode()),
+                    stop,
+                    trip.getOriginalTripPattern().getMode().name(),
+                    formatTime(arrivalTime),
+                    (staySeated ? previousTransit : previous).hashCode(),
+                    staySeated,
+                    otpTrip.getTripHeadsign(),
+                    getRouteName(route),
+                    route.getColor(),
+                    formatTime(departureTime)
             ));
         }
         else {
             LOG.warn("unknown arrival {}", arrival);
-            feature.setProperties(Map.of(
-                    "name", stop.getName(),
-                    "time", formatTime(arrivalTime),
-                    "parent", previous.hashCode()
+
+            res.add(new StopSpiderwebSimpleFeatureImpl(
+                    String.valueOf(arrival.hashCode()),
+                    stop,
+                    null,
+                    formatTime(arrivalTime),
+                    previous.hashCode()
             ));
         }
-        res.add(feature);
 
+        mapChildren(arrival, res, stopsByIndex, childMap, arrivalTime);
+    }
+
+    private void mapChildren(
+            AbstractStopArrival<TripSchedule> arrival,
+            ListFeatureCollection res,
+            List<Stop> stopsByIndex,
+            Map<AbstractStopArrival<TripSchedule>, List<AbstractStopArrival<TripSchedule>>> childMap,
+            int arrivalTime
+    ) {
         final List<AbstractStopArrival<TripSchedule>> children = childMap.get(arrival);
 
-        if (children != null) {
-            Map<TripSchedule, List<AbstractStopArrival<TripSchedule>>> groups = new HashMap<>();
-            for (var child : children) {
-                if (child.arrivedByTransit()) {
-                    List<AbstractStopArrival<TripSchedule>> c =
-                            groups.computeIfAbsent(
-                                    child.transitPath().trip(),
-                                    k -> new LinkedList<>()
-                            );
-                    c.add(child);
-                }
-                mapArrival(child, res, stopsByIndex, childMap);
+        if (children == null) return;
+
+        Map<TripSchedule, List<AbstractStopArrival<TripSchedule>>> groups = new HashMap<>();
+        for (var child : children) {
+            if (child.arrivedByTransit()) {
+                List<AbstractStopArrival<TripSchedule>> c =
+                        groups.computeIfAbsent(
+                                child.transitPath().trip(),
+                                k -> new LinkedList<>()
+                        );
+                c.add(child);
             }
+            mapArrival(child, res, stopsByIndex, childMap);
+        }
 
-            final TransitArrival<TripSchedule> previousTransit = arrival.mostResentTransitArrival();
-            int previousArrivalStopIndex = -1;
+        final TransitArrival<TripSchedule> previousTransit = arrival.mostResentTransitArrival();
+        int previousArrivalStopIndex = -1;
 
-            if (previousTransit != null) {
-                final TripSchedule previousTrip = previousTransit.trip();
-                previousArrivalStopIndex = previousTrip.findArrivalStopPosition(
+        if (previousTransit != null) {
+            final TripSchedule previousTrip = previousTransit.trip();
+            previousArrivalStopIndex = previousTrip.findArrivalStopPosition(
+                    previousTransit.arrivalTime(),
+                    previousTransit.stop()
+            );
+        }
+
+        for (Map.Entry<TripSchedule, List<AbstractStopArrival<TripSchedule>>> group : groups.entrySet()) {
+            TripSchedule trip = group.getKey();
+
+            final TripPattern originalTripPattern = trip.getOriginalTripPattern();
+            final Trip originalTrip = trip.getOriginalTripTimes().getTrip();
+            final Route route = originalTrip.getRoute();
+            final TransitMode mode = route.getMode();
+            final String color = route.getColor();
+
+            ConstrainedTransfer tx = null;
+            int stopPosition = -1;
+            if (previousArrivalStopIndex != -1) {
+                stopPosition = trip.findDepartureStopPosition(
                         previousTransit.arrivalTime(),
-                        previousTransit.stop()
+                        arrival.stop()
+                );
+                tx = router.graph.getTransferService().findTransfer(
+                        null,
+                        null,
+                        previousTransit.trip().getOriginalTripTimes().getTrip(),
+                        originalTrip,
+                        previousArrivalStopIndex,
+                        stopPosition
                 );
             }
 
-            for (Map.Entry<TripSchedule, List<AbstractStopArrival<TripSchedule>>> group : groups.entrySet()) {
-                TripSchedule trip = group.getKey();
+            final int departureStopIndex = tx == null ? trip.findDepartureStopPosition(
+                    arrivalTime,
+                    arrival.stop()
+            ) : stopPosition;
 
-                final Trip originalTrip = trip.getOriginalTripTimes().getTrip();
+            final int arrivalStopIndex = group.getValue().stream()
+                    .mapToInt(a -> trip.findArrivalStopPosition(a.arrivalTime(), a.stop()))
+                    .max()
+                    .getAsInt();
 
-                ConstrainedTransfer tx = null;
-                int stopPosition = -1;
-                if (previousArrivalStopIndex != -1) {
-                    stopPosition = trip.findDepartureStopPosition(
-                            previousTransit.arrivalTime(),
-                            arrival.stop()
-                    );
-                    tx = router.graph.getTransferService().findTransfer(
-                            null,
-                            null,
-                            previousTransit.trip().getOriginalTripTimes().getTrip(),
-                            originalTrip,
-                            previousArrivalStopIndex,
-                            stopPosition
-                    );
-                }
+            for (int i = departureStopIndex; i < arrivalStopIndex; i++) {
+                final int arrivalDuration = trip.arrival(i + 1) - earliestDepartureTime;
 
-                final int departureStopIndex = tx == null ? trip.findDepartureStopPosition(
-                        arrivalTime,
-                        arrival.stop()
-                ) : stopPosition;
-
-                final int arrivalStopIndex = group.getValue().stream()
-                        .mapToInt(a -> trip.findArrivalStopPosition(a.arrivalTime(), a.stop()))
-                        .max()
-                        .getAsInt();
-
-                for (int i = departureStopIndex; i < arrivalStopIndex; i++) {
-                    final int arrivalDuration = trip.arrival(i + 1) - earliestDepartureTime;
-                    // if (arrivalDuration > maxMinutes * 60) {break;}
-                    final Feature lineFeature = new Feature();
-
-                    final LineString line = new LineString();
-
-                    var geom = trip.getOriginalTripPattern().getHopGeometry(i);
-                    for (var coordinate : geom.getCoordinates()) {
-                        line.add(new LngLatAlt(coordinate.x, coordinate.y));
-                    }
-                    lineFeature.setGeometry(line);
-                    final Route route = originalTrip.getRoute();
-                    lineFeature.setProperties(Map.of(
-                            "mode", route.getMode().name(),
-                            "color", route.getColor() != null ? "#" + route.getColor() : "#888",
-                            "time", arrivalDuration
-                    ));
-                    res.add(lineFeature);
-                }
-
+                res.add(new RouteSpiderwebSimpleFeatureImpl(
+                    originalTripPattern.getFeedId() + "_" + i,
+                    originalTripPattern.getHopGeometry(i),
+                    mode,
+                    color,
+                    arrivalDuration
+                ));
             }
+
         }
     }
 
