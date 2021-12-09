@@ -412,9 +412,9 @@ public class StreetEdge extends Edge implements BikeWalkableEdge, Cloneable, Car
             final double realTurnCost;  // Units are seconds.
 
             // Apply turn restrictions
-            if (options.arriveBy && !canTurnOnto(backPSE, s0, backMode)) {
+            if (options.arriveBy && backMode != TraverseMode.WALK && !canTurnOnto(backPSE, s0, backMode)) {
                 return null;
-            } else if (!options.arriveBy && !backPSE.canTurnOnto(this, s0, traverseMode)) {
+            } else if (!options.arriveBy && traverseMode != TraverseMode.WALK && !backPSE.canTurnOnto(this, s0, traverseMode)) {
                 return null;
             }
 
