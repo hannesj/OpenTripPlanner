@@ -122,8 +122,8 @@ public class GTFSToOtpTransitServiceMapper {
         builder.getLocations().addAll(locationMapper.map(data.getAllLocations().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Location.class, entity)).collect(Collectors.toList())));
         builder.getLocationGroups().addAll(locationGroupMapper.map(data.getAllLocationGroups()));
         builder.getPathways().addAll(pathwayMapper.map(data.getAllPathways()));
-        builder.getStopTimesSortedByTrip().addAll(stopTimeMapper.map(data.getAllStopTimes().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.StopTime.class, entity)).collect(Collectors.toList())));
         builder.getTripsById().addAll(tripMapper.map(data.getAllTrips().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Trip.class, entity)).collect(Collectors.toList())));
+        builder.getStopTimesSortedByTrip().addAll(stopTimeMapper.map(data.getAllStopTimes().parallelStream().map(entity -> translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.StopTime.class, entity)).collect(Collectors.toList())));
 
         mapAndAddTransfersToBuilder();
     }

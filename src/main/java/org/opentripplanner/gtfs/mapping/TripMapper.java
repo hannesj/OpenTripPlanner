@@ -3,8 +3,11 @@ package org.opentripplanner.gtfs.mapping;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import org.opentripplanner.model.Direction;
+import org.opentripplanner.model.FeedInfo;
+import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.Trip;
 import org.opentripplanner.util.MapUtils;
 import org.slf4j.Logger;
@@ -17,7 +20,8 @@ class TripMapper {
 
     private final RouteMapper routeMapper;
 
-    private final Map<org.onebusaway.gtfs.model.Trip, Trip> mappedTrips = new HashMap<>();
+    private final Map<org.onebusaway.gtfs.model.Trip, Trip> mappedTrips = new ConcurrentHashMap<>();
+    public final Map<FeedScopedId, Trip> mappedTripsById = new ConcurrentHashMap<>();
 
     TripMapper(RouteMapper routeMapper) {
         this.routeMapper = routeMapper;
@@ -50,6 +54,7 @@ class TripMapper {
         lhs.setBikesAllowed(BikeAccessMapper.mapForTrip(rhs));
         lhs.setFareId(rhs.getFareId());
 
+        mappedTripsById.put(lhs.getId(), lhs);
         return lhs;
     }
 

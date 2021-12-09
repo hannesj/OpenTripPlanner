@@ -1,13 +1,13 @@
 package org.opentripplanner.gtfs.mapping;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.onebusaway.gtfs.model.Location;
 import org.onebusaway.gtfs.model.LocationGroup;
 import org.onebusaway.gtfs.model.Stop;
-import org.onebusaway.gtfs.model.Trip;
 import org.onebusaway.gtfs.services.translation.TranslationService;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
-import org.opentripplanner.util.MapUtils;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -27,7 +27,7 @@ class StopTimeMapper {
     private final BookingRuleMapper bookingRuleMapper;
     private TranslationService translationService;
 
-    private final Map<org.onebusaway.gtfs.model.StopTime, StopTime> mappedStopTimes = new HashMap<>();
+    private final Map<org.onebusaway.gtfs.model.StopTime, StopTime> mappedStopTimes = new ConcurrentHashMap<>();
 
     StopTimeMapper(
             StopMapper stopMapper,
@@ -46,7 +46,7 @@ class StopTimeMapper {
     }
 
     Collection<StopTime> map(Collection<org.onebusaway.gtfs.model.StopTime> times) {
-        return MapUtils.mapToList(times, this::map);
+        return times == null ? null : times.parallelStream().map(this::map).collect(Collectors.toList());
     }
 
     /** Map from GTFS to OTP model, {@code null} safe.  */
@@ -57,7 +57,7 @@ class StopTimeMapper {
     private StopTime doMap(org.onebusaway.gtfs.model.StopTime rhs) {
         StopTime lhs = new StopTime();
 
-        lhs.setTrip(tripMapper.map(translationService.getTranslatedEntity("en", org.onebusaway.gtfs.model.Trip.class, rhs.getTrip())));
+        lhs.setTrip(tripMapper.mappedTripsById.get(AgencyAndIdMapper.mapAgencyAndId(rhs.getTrip().getId())));
         if (rhs.getStop() instanceof Stop){
             lhs.setStop(stopMapper.map((Stop) rhs.getStop()));
         } else if (rhs.getStop() instanceof Location) {

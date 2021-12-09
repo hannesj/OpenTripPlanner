@@ -1,5 +1,6 @@
 package org.opentripplanner.gtfs.mapping;
 
+import java.util.concurrent.ConcurrentHashMap;
 import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.FareZone;
@@ -14,7 +15,7 @@ import java.util.TimeZone;
 /** Responsible for mapping GTFS Stop into the OTP model. */
 class StopMapper {
 
-  private Map<org.onebusaway.gtfs.model.Stop, Stop> mappedStops = new HashMap<>();
+  private Map<org.onebusaway.gtfs.model.Stop, Stop> mappedStops = new ConcurrentHashMap<>();
 
   Collection<Stop> map(Collection<org.onebusaway.gtfs.model.Stop> allStops) {
     return MapUtils.mapToList(allStops, this::map);
