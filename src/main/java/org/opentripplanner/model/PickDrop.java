@@ -16,18 +16,26 @@ public enum PickDrop {
     this.gtfsCode = gtfsCode;
   }
 
-  public boolean isRoutable() {
-    return routable;
-  }
-
-  public int getGtfsCode() {
-    return gtfsCode;
-  }
-
   public static PickDrop fromGtfsCode(int gtfsCode) {
     for (PickDrop pickDrop : PickDrop.values()) {
       if (pickDrop.gtfsCode == gtfsCode) return pickDrop;
     }
     throw new IllegalArgumentException("Not a valid gtfs code: " + gtfsCode);
+  }
+
+  public boolean is(PickDrop value) {
+    return this == value;
+  }
+
+  public boolean isRoutable() {
+    return routable;
+  }
+
+  public boolean isNotRoutable() {
+    return !routable;
+  }
+
+  public int getGtfsCode() {
+    return gtfsCode;
   }
 }

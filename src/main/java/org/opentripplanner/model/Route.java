@@ -1,178 +1,201 @@
 /* This file is based on code copied from project OneBusAway, see the LICENSE file for further information. */
 package org.opentripplanner.model;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
 public final class Route extends TransitEntity {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    private static final int MISSING_VALUE = -999;
+  private static final int MISSING_VALUE = -999;
 
-    private Agency agency;
+  private Agency agency;
 
-    private Operator operator;
+  private Operator operator;
 
-    private String shortName;
+  private Branding branding;
 
-    private String longName;
+  private List<GroupOfRoutes> groupsOfRoutes = new ArrayList<>();
 
-    private int type;
+  private String shortName;
 
-    private TransitMode mode;
+  private String longName;
 
-    private String desc;
+  private TransitMode mode;
 
-    private String url;
+  // TODO: consolidate these
+  private Integer gtfsType;
+  private String netexSubmode;
 
-    private String color;
+  private String desc;
 
-    private String textColor;
+  private String url;
 
-    private BikeAccess bikesAllowed = BikeAccess.UNKNOWN;
+  private String color;
 
-    private int sortOrder = MISSING_VALUE;
+  private String textColor;
 
-    private String brandingUrl;
+  private BikeAccess bikesAllowed = BikeAccess.UNKNOWN;
 
-    private String flexibleLineType;
+  private int sortOrder = MISSING_VALUE;
 
-    public Route(FeedScopedId id) {
-        super(id);
-    }
+  private String flexibleLineType;
 
-    /**
-     * The 'agency' property represent a GTFS Agency and NeTEx the Authority.
-     * Note that Agency does NOT map 1-1 to Authority, it is rather a mix
-     * between Authority and Operator.
-     */
-    public Agency getAgency() {
-        return agency;
-    }
+  public Route(FeedScopedId id) {
+    super(id);
+  }
 
-    public void setAgency(Agency agency) {
-        this.agency = agency;
-    }
+  public Branding getBranding() {
+    return branding;
+  }
 
-    /**
-     * NeTEx Operator, not in use when importing GTFS files.
-     */
-    public Operator getOperator() {
-        return operator;
-    }
+  public void setBranding(Branding branding) {
+    this.branding = branding;
+  }
 
-    public void setOperator(Operator operator) {
-        this.operator = operator;
-    }
+  /**
+   * The 'agency' property represent a GTFS Agency and NeTEx the Authority. Note that Agency does
+   * NOT map 1-1 to Authority, it is rather a mix between Authority and Operator.
+   */
+  public Agency getAgency() {
+    return agency;
+  }
 
-    public String getShortName() {
-        return shortName;
-    }
+  public void setAgency(Agency agency) {
+    this.agency = agency;
+  }
 
-    public void setShortName(String shortName) {
-        this.shortName = shortName;
-    }
+  /**
+   * NeTEx Operator, not in use when importing GTFS files.
+   */
+  public Operator getOperator() {
+    return operator;
+  }
 
-    public String getLongName() {
-        return longName;
-    }
+  public void setOperator(Operator operator) {
+    this.operator = operator;
+  }
 
-    public void setLongName(String longName) {
-        this.longName = longName;
-    }
+  public String getShortName() {
+    return shortName;
+  }
 
-    public String getDesc() {
-        return desc;
-    }
+  public void setShortName(String shortName) {
+    this.shortName = shortName;
+  }
 
-    public void setDesc(String desc) {
-        this.desc = desc;
-    }
+  public String getLongName() {
+    return longName;
+  }
 
-    public int getType() {
-        return type;
-    }
+  public void setLongName(String longName) {
+    this.longName = longName;
+  }
 
-    public void setType(int type) {
-        this.type = type;
-    }
+  public String getDesc() {
+    return desc;
+  }
 
-    public TransitMode getMode() {
-        return mode;
-    }
+  public void setDesc(String desc) {
+    this.desc = desc;
+  }
 
-    public void setMode(TransitMode mode) {
-        this.mode = mode;
-    }
+  public Integer getGtfsType() {
+    return gtfsType;
+  }
 
-    public String getUrl() {
-        return url;
-    }
+  public void setGtfsType(int gtfsType) {
+    this.gtfsType = gtfsType;
+  }
 
-    public void setUrl(String url) {
-        this.url = url;
-    }
+  public TransitMode getMode() {
+    return mode;
+  }
 
-    public String getColor() {
-        return color;
-    }
+  public void setMode(TransitMode mode) {
+    this.mode = mode;
+  }
 
-    public void setColor(String color) {
-        this.color = color;
-    }
+  public String getUrl() {
+    return url;
+  }
 
-    public String getTextColor() {
-        return textColor;
-    }
+  public void setUrl(String url) {
+    this.url = url;
+  }
 
-    public void setTextColor(String textColor) {
-        this.textColor = textColor;
-    }
+  public String getColor() {
+    return color;
+  }
 
-    public BikeAccess getBikesAllowed() {
-        return bikesAllowed;
-    }
+  public void setColor(String color) {
+    this.color = color;
+  }
 
-    public void setBikesAllowed(BikeAccess bikesAllowed) {
-        this.bikesAllowed = bikesAllowed;
-    }
+  public String getTextColor() {
+    return textColor;
+  }
 
-    public boolean isSortOrderSet() {
-        return sortOrder != MISSING_VALUE;
-    }
+  public void setTextColor(String textColor) {
+    this.textColor = textColor;
+  }
 
-    public int getSortOrder() {
-        return sortOrder;
-    }
+  public BikeAccess getBikesAllowed() {
+    return bikesAllowed;
+  }
 
-    public void setSortOrder(int sortOrder) {
-        this.sortOrder = sortOrder;
-    }
+  public void setBikesAllowed(BikeAccess bikesAllowed) {
+    this.bikesAllowed = bikesAllowed;
+  }
 
-    public String getBrandingUrl() {
-        return brandingUrl;
-    }
+  public boolean isSortOrderSet() {
+    return sortOrder != MISSING_VALUE;
+  }
 
-    public void setBrandingUrl(String brandingUrl) {
-        this.brandingUrl = brandingUrl;
-    }
+  public int getSortOrder() {
+    return sortOrder;
+  }
 
-    /**
-     * Pass-through information from NeTEx FlexibleLineType. This information is not used by OTP.
-     */
-    public String getFlexibleLineType() {
-        return flexibleLineType;
-    }
+  public void setSortOrder(int sortOrder) {
+    this.sortOrder = sortOrder;
+  }
 
-    public void setFlexibleLineType(String flexibleLineType) {
-        this.flexibleLineType = flexibleLineType;
-    }
+  /**
+   * Pass-through information from NeTEx FlexibleLineType. This information is not used by OTP.
+   */
+  public String getFlexibleLineType() {
+    return flexibleLineType;
+  }
 
-    /** @return the route's short name, or the long name if the short name is null. */
-    public String getName() {
-        return  shortName != null ? shortName : longName;
-    }
+  public void setFlexibleLineType(String flexibleLineType) {
+    this.flexibleLineType = flexibleLineType;
+  }
 
-    @Override
-    public String toString() {
-        return "<Route " + getId() + " " + shortName + ">";
-    }
+  /** @return the route's short name, or the long name if the short name is null. */
+  public String getName() {
+    return shortName != null ? shortName : longName;
+  }
+
+  @Override
+  public String toString() {
+    return "<Route " + getId() + " " + getName() + ">";
+  }
+
+  public String getNetexSubmode() {
+    return netexSubmode;
+  }
+
+  public void setNetexSubmode(String netexSubmode) {
+    this.netexSubmode = netexSubmode;
+  }
+
+  public List<GroupOfRoutes> getGroupsOfRoutes() {
+    return groupsOfRoutes;
+  }
+
+  public void setGroupsOfRoutes(Collection<GroupOfRoutes> list) {
+    groupsOfRoutes = List.copyOf(list);
+  }
 }

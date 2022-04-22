@@ -12,24 +12,25 @@ public class StopTransferPriorityMapperTest {
   @SuppressWarnings("ConstantConditions")
   @Test
   public void mapToDomain() {
+    assertNull(StopTransferPriorityMapper.mapToDomain(null));
 
-    assertNull(TransferPriorityMapper.mapToDomain(null));
-
     assertEquals(
-        StopTransferPriority.DISCOURAGED,
-        TransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.NO_INTERCHANGE)
+      StopTransferPriority.DISCOURAGED,
+      StopTransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.NO_INTERCHANGE)
     );
     assertEquals(
-        StopTransferPriority.ALLOWED,
-        TransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.INTERCHANGE_ALLOWED)
+      StopTransferPriority.ALLOWED,
+      StopTransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.INTERCHANGE_ALLOWED)
     );
     assertEquals(
-        StopTransferPriority.PREFERRED,
-        TransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.PREFERRED_INTERCHANGE)
+      StopTransferPriority.PREFERRED,
+      StopTransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.PREFERRED_INTERCHANGE)
     );
     assertEquals(
-        StopTransferPriority.RECOMMENDED,
-        TransferPriorityMapper.mapToDomain(InterchangeWeightingEnumeration.RECOMMENDED_INTERCHANGE)
+      StopTransferPriority.RECOMMENDED,
+      StopTransferPriorityMapper.mapToDomain(
+        InterchangeWeightingEnumeration.RECOMMENDED_INTERCHANGE
+      )
     );
   }
 }

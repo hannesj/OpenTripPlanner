@@ -1,16 +1,6 @@
 package org.opentripplanner.ext.flex.trip;
 
-import java.util.Set;
-import org.opentripplanner.ext.flex.FlexServiceDate;
-import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
-import org.opentripplanner.ext.flex.template.FlexAccessTemplate;
-import org.opentripplanner.ext.flex.template.FlexEgressTemplate;
-import org.opentripplanner.model.BookingInfo;
-import org.opentripplanner.model.FlexLocationGroup;
-import org.opentripplanner.model.StopLocation;
-import org.opentripplanner.model.StopTime;
-import org.opentripplanner.model.Trip;
-import org.opentripplanner.routing.graphfinder.NearbyStop;
+import static org.opentripplanner.model.PickDrop.NONE;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -18,12 +8,22 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.opentripplanner.ext.flex.FlexParameters;
-
-import static org.opentripplanner.model.PickDrop.NONE;
+import org.opentripplanner.ext.flex.FlexServiceDate;
+import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
+import org.opentripplanner.ext.flex.template.FlexAccessTemplate;
+import org.opentripplanner.ext.flex.template.FlexEgressTemplate;
+import org.opentripplanner.model.BookingInfo;
+import org.opentripplanner.model.FlexLocationGroup;
+import org.opentripplanner.model.PickDrop;
+import org.opentripplanner.model.StopLocation;
+import org.opentripplanner.model.StopTime;
+import org.opentripplanner.model.Trip;
+import org.opentripplanner.routing.graphfinder.NearbyStop;
 
 /**
  * This type of FlexTrip is used when a taxi-type service is modeled, which operates in one or
@@ -32,26 +32,17 @@ import static org.opentripplanner.model.PickDrop.NONE;
  * trip is possible.
  */
 public class UnscheduledTrip extends FlexTrip {
+
   // unscheduled trips can contain one or two stop_times
-  private static final Set<Integer> N_STOPS = Set.of(1,2);
+  private static final Set<Integer> N_STOPS = Set.of(1, 2);
 
   private final UnscheduledStopTime[] stopTimes;
 
   private final BookingInfo[] dropOffBookingInfos;
   private final BookingInfo[] pickupBookingInfos;
 
-  public static boolean isUnscheduledTrip(List<StopTime> stopTimes) {
-    Predicate<StopTime> noExplicitTimes = Predicate.not(st -> st.isArrivalTimeSet() || st.isDepartureTimeSet());
-    Predicate<StopTime> notContinuousStop = stopTime ->
-        stopTime.getFlexContinuousDropOff() == NONE.getGtfsCode() && stopTime.getFlexContinuousPickup() == NONE.getGtfsCode();
-    return N_STOPS.contains(stopTimes.size())
-        && stopTimes.stream().allMatch(noExplicitTimes)
-        && stopTimes.stream().allMatch(notContinuousStop);
-  }
-
   public UnscheduledTrip(Trip trip, List<StopTime> stopTimes) {
     super(trip);
-
     if (!isUnscheduledTrip(stopTimes)) {
       throw new IllegalArgumentException("Incompatible stopTimes for unscheduled trip");
     }
@@ -68,19 +59,44 @@ public class UnscheduledTrip extends FlexTrip {
     }
   }
 
+  public static boolean isUnscheduledTrip(List<StopTime> stopTimes) {
+    Predicate<StopTime> noExplicitTimes = Predicate.not(st ->
+      st.isArrivalTimeSet() || st.isDepartureTimeSet()
+    );
+    Predicate<StopTime> notContinuousStop = stopTime ->
+      stopTime.getFlexContinuousDropOff() == NONE.getGtfsCode() &&
+      stopTime.getFlexContinuousPickup() == NONE.getGtfsCode();
+    return (
+      N_STOPS.contains(stopTimes.size()) &&
+      stopTimes.stream().allMatch(noExplicitTimes) &&
+      stopTimes.stream().allMatch(notContinuousStop)
+    );
+  }
+
   @Override
   public Stream<FlexAccessTemplate> getFlexAccessTemplates(
-      NearbyStop access, FlexServiceDate date, FlexPathCalculator calculator, FlexParameters params
+    NearbyStop access,
+    FlexServiceDate date,
+    FlexPathCalculator calculator,
+    FlexParameters params
   ) {
+    // Find boarding index
     int fromIndex = getFromIndex(access);
-    int toIndex = getToIndex(access);
 
-    if (stopTimes[fromIndex].dropOffType == NONE.getGtfsCode()) { return Stream.empty(); }
+    // Alighting is always at the last stop for unscheduled trips
+    int toIndex = stopTimes.length - 1;
+
+    // Check if trip is possible
+    if (fromIndex == -1 || fromIndex > toIndex || getDropOffType(toIndex).isNotRoutable()) {
+      return Stream.empty();
+    }
 
     ArrayList<FlexAccessTemplate> res = new ArrayList<>();
 
-    for (StopLocation stop : expandStops(stopTimes[fromIndex].stop)) {
-      res.add(new FlexAccessTemplate(access, this, fromIndex, toIndex, stop, date, calculator, params));
+    for (StopLocation stop : expandStops(stopTimes[toIndex].stop)) {
+      res.add(
+        new FlexAccessTemplate(access, this, fromIndex, toIndex, stop, date, calculator, params)
+      );
     }
 
     return res.stream();
@@ -88,17 +104,28 @@ public class UnscheduledTrip extends FlexTrip {
 
   @Override
   public Stream<FlexEgressTemplate> getFlexEgressTemplates(
-      NearbyStop egress, FlexServiceDate date, FlexPathCalculator calculator, FlexParameters params
+    NearbyStop egress,
+    FlexServiceDate date,
+    FlexPathCalculator calculator,
+    FlexParameters params
   ) {
-    int fromIndex = getFromIndex(egress);
+    // Boarding is always at the first stop for unscheduled trips
+    int fromIndex = 0;
+
+    // Find alighting index
     int toIndex = getToIndex(egress);
 
-    if (stopTimes[toIndex].pickupType == NONE.getGtfsCode()) { return Stream.empty(); }
+    // Check if trip is possible
+    if (toIndex == -1 || fromIndex > toIndex || getPickupType(fromIndex).isNotRoutable()) {
+      return Stream.empty();
+    }
 
     ArrayList<FlexEgressTemplate> res = new ArrayList<>();
 
-    for (StopLocation stop : expandStops(stopTimes[toIndex].stop)) {
-      res.add(new FlexEgressTemplate(egress, this, fromIndex, toIndex, stop, date, calculator, params));
+    for (StopLocation stop : expandStops(stopTimes[fromIndex].stop)) {
+      res.add(
+        new FlexEgressTemplate(egress, this, fromIndex, toIndex, stop, date, calculator, params)
+      );
     }
 
     return res.stream();
@@ -106,13 +133,17 @@ public class UnscheduledTrip extends FlexTrip {
 
   @Override
   public int earliestDepartureTime(
-      int departureTime, int fromStopIndex, int toStopIndex, int flexTime
+    int departureTime,
+    int fromStopIndex,
+    int toStopIndex,
+    int flexTime
   ) {
     UnscheduledStopTime fromStopTime = stopTimes[fromStopIndex];
     UnscheduledStopTime toStopTime = stopTimes[toStopIndex];
-    if (fromStopTime.flexWindowEnd < departureTime || toStopTime.flexWindowEnd < (
-        departureTime + flexTime
-    )) {
+    if (
+      fromStopTime.flexWindowEnd < departureTime ||
+      toStopTime.flexWindowEnd < (departureTime + flexTime)
+    ) {
       return -1;
     }
 
@@ -123,9 +154,10 @@ public class UnscheduledTrip extends FlexTrip {
   public int latestArrivalTime(int arrivalTime, int fromStopIndex, int toStopIndex, int flexTime) {
     UnscheduledStopTime fromStopTime = stopTimes[fromStopIndex];
     UnscheduledStopTime toStopTime = stopTimes[toStopIndex];
-    if (toStopTime.flexWindowStart > arrivalTime || fromStopTime.flexWindowStart > (
-        arrivalTime - flexTime
-    )) {
+    if (
+      toStopTime.flexWindowStart > arrivalTime ||
+      fromStopTime.flexWindowStart > (arrivalTime - flexTime)
+    ) {
       return -1;
     }
 
@@ -135,9 +167,9 @@ public class UnscheduledTrip extends FlexTrip {
   @Override
   public Set<StopLocation> getStops() {
     return Arrays
-        .stream(stopTimes)
-        .map(scheduledDeviatedStopTime -> scheduledDeviatedStopTime.stop)
-        .collect(Collectors.toSet());
+      .stream(stopTimes)
+      .map(scheduledDeviatedStopTime -> scheduledDeviatedStopTime.stop)
+      .collect(Collectors.toSet());
   }
 
   @Override
@@ -151,6 +183,16 @@ public class UnscheduledTrip extends FlexTrip {
   }
 
   @Override
+  public PickDrop getBoardRule(int i) {
+    return stopTimes[i].pickupType;
+  }
+
+  @Override
+  public PickDrop getAlightRule(int i) {
+    return stopTimes[i].dropOffType;
+  }
+
+  @Override
   public boolean isBoardingPossible(NearbyStop stop) {
     return getFromIndex(stop) != -1;
   }
@@ -160,22 +202,31 @@ public class UnscheduledTrip extends FlexTrip {
     return getToIndex(stop) != -1;
   }
 
+  public PickDrop getPickupType(int i) {
+    return stopTimes[i].pickupType;
+  }
+
+  public PickDrop getDropOffType(int i) {
+    return stopTimes[i].dropOffType;
+  }
+
   private Collection<StopLocation> expandStops(StopLocation stop) {
     return stop instanceof FlexLocationGroup
-        ? ((FlexLocationGroup) stop).getLocations()
-        : Collections.singleton(stop);
+      ? ((FlexLocationGroup) stop).getLocations()
+      : Collections.singleton(stop);
   }
 
   private int getFromIndex(NearbyStop accessEgress) {
     for (int i = 0; i < stopTimes.length; i++) {
-      if (stopTimes[i].pickupType == NONE.getGtfsCode()) continue;
+      if (getPickupType(i).isNotRoutable()) {
+        continue;
+      }
       StopLocation stop = stopTimes[i].stop;
       if (stop instanceof FlexLocationGroup) {
         if (((FlexLocationGroup) stop).getLocations().contains(accessEgress.stop)) {
           return i;
         }
-      }
-      else {
+      } else {
         if (stop.equals(accessEgress.stop)) {
           return i;
         }
@@ -186,14 +237,15 @@ public class UnscheduledTrip extends FlexTrip {
 
   private int getToIndex(NearbyStop accessEgress) {
     for (int i = stopTimes.length - 1; i >= 0; i--) {
-      if (stopTimes[i].dropOffType == NONE.getGtfsCode()) continue;
+      if (getDropOffType(i).isNotRoutable()) {
+        continue;
+      }
       StopLocation stop = stopTimes[i].stop;
       if (stop instanceof FlexLocationGroup) {
         if (((FlexLocationGroup) stop).getLocations().contains(accessEgress.stop)) {
           return i;
         }
-      }
-      else {
+      } else {
         if (stop.equals(accessEgress.stop)) {
           return i;
         }
@@ -203,13 +255,14 @@ public class UnscheduledTrip extends FlexTrip {
   }
 
   private static class UnscheduledStopTime implements Serializable {
+
     private final StopLocation stop;
 
     private final int flexWindowStart;
     private final int flexWindowEnd;
 
-    private final int pickupType;
-    private final int dropOffType;
+    private final PickDrop pickupType;
+    private final PickDrop dropOffType;
 
     private UnscheduledStopTime(StopTime st) {
       stop = st.getStop();
@@ -217,8 +270,8 @@ public class UnscheduledTrip extends FlexTrip {
       flexWindowStart = st.getFlexWindowStart();
       flexWindowEnd = st.getFlexWindowEnd();
 
-      pickupType = st.getPickupType().getGtfsCode();
-      dropOffType = st.getDropOffType().getGtfsCode();
+      pickupType = st.getPickupType();
+      dropOffType = st.getDropOffType();
     }
   }
 }

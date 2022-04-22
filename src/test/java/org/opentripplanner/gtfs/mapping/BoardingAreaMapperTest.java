@@ -1,20 +1,21 @@
 package org.opentripplanner.gtfs.mapping;
 
-import org.junit.Test;
-import org.onebusaway.gtfs.model.AgencyAndId;
-import org.onebusaway.gtfs.model.Stop;
-import org.opentripplanner.model.WheelChairBoarding;
-
-import java.util.Collection;
-import java.util.Collections;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-public class BoardingAreaMapperTest  {
+import java.util.Collection;
+import java.util.Collections;
+import org.junit.Test;
+import org.onebusaway.gtfs.model.AgencyAndId;
+import org.onebusaway.gtfs.model.Stop;
+import org.opentripplanner.model.WheelChairBoarding;
+import org.opentripplanner.util.TranslationHelper;
+
+public class BoardingAreaMapperTest {
+
   private static final AgencyAndId AGENCY_AND_ID = new AgencyAndId("A", "B1");
 
   private static final String CODE = "Code";
@@ -40,6 +41,7 @@ public class BoardingAreaMapperTest  {
   private static final String ZONE_ID = "Zone Id";
 
   private static final Stop STOP = new Stop();
+  private final BoardingAreaMapper subject = new BoardingAreaMapper(new TranslationHelper());
 
   static {
     STOP.setLocationType(Stop.LOCATION_TYPE_BOARDING_AREA);
@@ -57,8 +59,6 @@ public class BoardingAreaMapperTest  {
     STOP.setZoneId(ZONE_ID);
   }
 
-  private BoardingAreaMapper subject = new BoardingAreaMapper();
-
   @Test
   public void testMapCollection() {
     assertNull(null, subject.map((Collection<Stop>) null));
@@ -73,9 +73,9 @@ public class BoardingAreaMapperTest  {
     assertEquals("A:B1", result.getId().toString());
     assertEquals(CODE, result.getCode());
     assertEquals(DESC, result.getDescription());
-    assertEquals(LAT, result.getLat(), 0.0001d);
-    assertEquals(LON, result.getLon(), 0.0001d);
-    assertEquals(NAME, result.getName());
+    assertEquals(LAT, result.getCoordinate().latitude(), 0.0001d);
+    assertEquals(LON, result.getCoordinate().longitude(), 0.0001d);
+    assertEquals(NAME, result.getName().toString());
     assertEquals(WHEELCHAIR_BOARDING, result.getWheelchairBoarding());
   }
 
@@ -90,7 +90,7 @@ public class BoardingAreaMapperTest  {
     assertNotNull(result.getId());
     assertNull(result.getCode());
     assertNull(result.getDescription());
-    assertNull(result.getName());
+    assertEquals(BoardingAreaMapper.DEFAULT_NAME, result.getName().toString());
     assertNull(result.getParentStop());
     assertNull(result.getCode());
     assertEquals(WheelChairBoarding.NO_INFORMATION, result.getWheelchairBoarding());
@@ -104,7 +104,7 @@ public class BoardingAreaMapperTest  {
 
     org.opentripplanner.model.BoardingArea result = subject.map(input);
 
-    result.getLat();
+    result.getCoordinate().latitude();
   }
 
   /** Mapping the same object twice, should return the the same instance. */

@@ -1,13 +1,16 @@
 package org.opentripplanner.ext.transmodelapi.model.stop;
 
-import org.opentripplanner.model.*;
-
 import java.util.Collection;
 import java.util.TimeZone;
+import org.opentripplanner.model.MultiModalStation;
+import org.opentripplanner.model.Station;
+import org.opentripplanner.model.StopLocation;
+import org.opentripplanner.model.TransitEntity;
+import org.opentripplanner.util.I18NString;
 
 public class MonoOrMultiModalStation extends TransitEntity {
 
-  private final String name;
+  private final I18NString name;
 
   private final double lat;
 
@@ -26,29 +29,25 @@ public class MonoOrMultiModalStation extends TransitEntity {
   /**
    * URL to a web page containing information about this particular station
    */
-  private final String url;
+  private final I18NString url;
 
   private final TimeZone timezone;
 
-  private final Collection<Stop> childStops;
+  private final Collection<StopLocation> childStops;
 
   private final MonoOrMultiModalStation parentStation;
 
   public MonoOrMultiModalStation(Station station, MultiModalStation parentStation) {
-      super(station.getId());
-
-      this.name = station.getName();
-      this.lat = station.getLat();
-      this.lon = station.getLon();
-      this.code = station.getCode();
-      this.description = station.getDescription();
-      this.url = station.getUrl();
-      this.timezone = station.getTimezone();
-      this.childStops = station.getChildStops();
-      this.parentStation =
-          parentStation != null
-              ? new MonoOrMultiModalStation(parentStation)
-              : null;
+    super(station.getId());
+    this.name = station.getName();
+    this.lat = station.getLat();
+    this.lon = station.getLon();
+    this.code = station.getCode();
+    this.description = station.getDescription();
+    this.url = station.getUrl();
+    this.timezone = station.getTimezone();
+    this.childStops = station.getChildStops();
+    this.parentStation = parentStation != null ? new MonoOrMultiModalStation(parentStation) : null;
   }
 
   public MonoOrMultiModalStation(MultiModalStation multiModalStation) {
@@ -64,7 +63,7 @@ public class MonoOrMultiModalStation extends TransitEntity {
     this.parentStation = null;
   }
 
-  public String getName() {
+  public I18NString getName() {
     return name;
   }
 
@@ -84,7 +83,7 @@ public class MonoOrMultiModalStation extends TransitEntity {
     return description;
   }
 
-  public String getUrl() {
+  public I18NString getUrl() {
     return url;
   }
 
@@ -92,7 +91,7 @@ public class MonoOrMultiModalStation extends TransitEntity {
     return timezone;
   }
 
-  public Collection<Stop> getChildStops() {
+  public Collection<StopLocation> getChildStops() {
     return childStops;
   }
 

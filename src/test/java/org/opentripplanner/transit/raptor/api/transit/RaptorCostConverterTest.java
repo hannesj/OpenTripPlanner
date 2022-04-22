@@ -4,9 +4,10 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
-import org.opentripplanner.routing.algorithm.raptor.transit.cost.RaptorCostConverter;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCostConverter;
 
 public class RaptorCostConverterTest {
+
   @Test
   public void toOtpDomainCost() {
     assertEquals(-1, RaptorCostConverter.toOtpDomainCost(-1));
@@ -25,8 +26,8 @@ public class RaptorCostConverterTest {
 
   @Test
   public void toRaptorCosts() {
-    int[] expected = {100, 80};
-    int[] result = RaptorCostConverter.toRaptorCosts(new double[]{1.0, 0.8});
+    int[] expected = { 100, 80 };
+    int[] result = RaptorCostConverter.toRaptorCosts(new double[] { 1.0, 0.8 });
     assertArrayEquals(expected, result);
   }
 
