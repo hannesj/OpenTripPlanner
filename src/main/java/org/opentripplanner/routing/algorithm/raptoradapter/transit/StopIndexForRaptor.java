@@ -28,7 +28,7 @@ import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCo
  */
 public final class StopIndexForRaptor {
 
-  private final List<StopLocation> stopsByIndex;
+  public final List<StopLocation> stopsByIndex;
   private final Map<StopLocation, Integer> indexByStop = new HashMap<>();
   public final int[] stopBoardAlightCosts;
 

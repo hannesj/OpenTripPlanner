@@ -19,7 +19,7 @@ import org.opentripplanner.transit.raptor.util.BitSetIterator;
  */
 public final class StopArrivals<T extends RaptorTripSchedule> {
 
-  private final StopArrivalParetoSet<T>[] arrivals;
+  public final StopArrivalParetoSet<T>[] arrivals;
   private final BitSet touchedStops;
   private final DebugHandlerFactory<T> debugHandlerFactory;
   private final DebugStopArrivalsStatistics debugStats;

@@ -24,7 +24,7 @@
     <properties>
         <otp.serialization.version.id>22</otp.serialization.version.id>
         <!-- Lib versions - keep list sorted on property name -->
-        <geotools.version>26.2</geotools.version>
+        <geotools.version>27-SNAPSHOT</geotools.version>
         <jackson.version>2.13.2</jackson.version>
         <jersey.version>2.34</jersey.version>
         <junit.version>5.8.2</junit.version>
@@ -407,6 +407,13 @@
             <url>https://repo.osgeo.org/repository/release/</url>
         </repository>
         <repository>
+            <id>osgeo-snapshot</id>
+            <name>OSGeo Snapshot Repository</name>
+            <url>https://repo.osgeo.org/repository/snapshot/</url>
+            <snapshots><enabled>true</enabled></snapshots>
+            <releases><enabled>false</enabled></releases>
+        </repository>
+        <repository>
             <id>geosolutions</id>
             <name>GeoSolutions Repository</name>
             <url>https://maven.geo-solutions.it/</url>
@@ -505,7 +512,6 @@
              <version>${lucene.version}</version>
         </dependency>
 
-        <!-- provides EPSG database for projections (shapefile loading) -->
         <dependency>
              <groupId>org.apache.lucene</groupId>
              <artifactId>lucene-suggest</artifactId>
@@ -698,7 +704,6 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.4.0</version>
         </dependency>
 
         <!-- Asynchronous Websocket-capable client, for message-driven incremental GTFS-RT -->

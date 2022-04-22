@@ -119,16 +119,6 @@ public abstract class AbstractStopArrival<T extends RaptorTripSchedule> implemen
   }
 
   @Override
-  public final int hashCode() {
-    throw new IllegalStateException("Avoid using hashCode() and equals() for this class.");
-  }
-
-  @Override
-  public final boolean equals(Object o) {
-    throw new IllegalStateException("Avoid using hashCode() and equals() for this class.");
-  }
-
-  @Override
   public String toString() {
     return asString();
   }

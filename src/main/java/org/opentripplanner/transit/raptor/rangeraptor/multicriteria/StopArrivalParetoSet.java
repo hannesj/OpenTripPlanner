@@ -16,7 +16,7 @@ import org.opentripplanner.transit.raptor.util.paretoset.ParetoSetWithMarker;
  *
  * @param <T> The TripSchedule type defined by the user of the raptor API.
  */
-class StopArrivalParetoSet<T extends RaptorTripSchedule>
+public class StopArrivalParetoSet<T extends RaptorTripSchedule>
   extends ParetoSetWithMarker<AbstractStopArrival<T>> {
 
   /**
