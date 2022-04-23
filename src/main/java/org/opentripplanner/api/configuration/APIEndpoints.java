@@ -24,6 +24,7 @@ import org.opentripplanner.api.resource.ServerInfo;
 import org.opentripplanner.api.resource.UpdaterStatusResource;
 import org.opentripplanner.ext.actuator.ActuatorAPI;
 import org.opentripplanner.ext.geocoder.GeocoderResource;
+import org.opentripplanner.ext.isochrone.IsochroneResource;
 import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLAPI;
 import org.opentripplanner.ext.parkAndRideApi.ParkAndRideResource;
 import org.opentripplanner.ext.reportapi.resource.ReportResource;
@@ -46,6 +47,7 @@ public class APIEndpoints {
     add(PlannerResource.class);
     add(IndexAPI.class);
     add(SpiderwebResource.class);
+    add(IsochroneResource.class);
 
     // Add feature enabled APIs, these can be enabled by default, some is not.
     // See the OTPFeature enum for details.
