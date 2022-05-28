@@ -28,9 +28,9 @@ public class NorwayWayPropertySetSource implements WayPropertySetSource {
 
   @Override
   public void populateProperties(WayPropertySet props) {
-    var very_high_traffic = 8;
-    var high_traffic = 2.25;
-    var medium_high_traffic = 2.06;
+    var very_high_traffic = 2.25;
+    var high_traffic = 2.06;
+    var medium_high_traffic = 1.8;
     var medium_traffic = 1.5;
     var medium_low_traffic = 1.42;
     var low_traffic = 1.1;

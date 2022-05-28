@@ -14,13 +14,16 @@ import org.opentripplanner.graph_builder.model.GraphBuilderModule;
 import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.Transfer;
 import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.routing.vertextype.TransitStopVertex;
+import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TransitModel;
 import org.opentripplanner.util.OTPFeature;
@@ -111,10 +114,39 @@ public class DirectTransferGenerator implements GraphBuilderModule {
         for (RoutingRequest transferProfile : transferRequests) {
           RoutingRequest streetRequest = Transfer.prepareTransferRoutingRequest(transferProfile);
 
-          for (NearbyStop sd : findNearbyStops(nearbyStopFinder, ts0, streetRequest, false)) {
+          if (streetRequest.modes.directMode == StreetMode.BIKE) {
+            if (
+              transitModel
+                .getTransitModelIndex()
+                .getTripsForStop(stop)
+                .stream()
+                .map(Trip::getBikesAllowed)
+                .noneMatch(bikeAccess -> bikeAccess == BikeAccess.ALLOWED)
+            ) {
+              continue;
+            }
+          }
+
+          for (NearbyStop sd : nearbyStopFinder.findNearbyStopsConsideringPatterns(
+            ts0,
+            streetRequest,
+            false
+          )) {
             // Skip the origin stop, loop transfers are not needed.
             if (sd.stop == stop) {
               continue;
+            }
+            if (streetRequest.modes.directMode == StreetMode.BIKE) {
+              if (
+                transitModel
+                  .getTransitModelIndex()
+                  .getTripsForStop(sd.stop)
+                  .stream()
+                  .map(Trip::getBikesAllowed)
+                  .noneMatch(bikeAccess -> bikeAccess == BikeAccess.ALLOWED)
+              ) {
+                continue;
+              }
             }
             distinctTransfers.put(
               new TransferKey(stop, sd.stop, sd.edges),

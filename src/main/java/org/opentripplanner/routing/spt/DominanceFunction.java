@@ -94,6 +94,12 @@ public abstract class DominanceFunction implements Serializable {
       return false;
     }
 
+    for (StreetEdge streetEdge : a.getVertex().getIncomingStreetEdges()) {
+      if (!streetEdge.getTurnRestrictions().isEmpty()) {
+        return false;
+      }
+    }
+
     // These two states are comparable (they are on the same "plane" or "copy" of the graph).
     return betterOrEqual(a, b);
   }

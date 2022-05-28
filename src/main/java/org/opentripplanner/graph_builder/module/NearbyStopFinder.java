@@ -217,8 +217,12 @@ public class NearbyStopFinder {
       return stopsFound;
     }
 
+    Duration durationLimit = routingRequest.modes.directMode == StreetMode.BIKE
+      ? Duration.ofHours(4)
+      : this.durationLimit;
+
     ShortestPathTree spt = AStarBuilder
-      .allDirections(getSkipEdgeStrategy(reverseDirection, routingRequest))
+      .allDirections(getSkipEdgeStrategy(reverseDirection, routingRequest, durationLimit))
       .setDominanceFunction(new DominanceFunction.MinimumWeight())
       .setContext(routingContext)
       .getShortestPathTree();
@@ -285,7 +289,8 @@ public class NearbyStopFinder {
 
   private SkipEdgeStrategy getSkipEdgeStrategy(
     boolean reverseDirection,
-    RoutingRequest routingRequest
+    RoutingRequest routingRequest,
+    Duration durationLimit
   ) {
     var durationSkipEdgeStrategy = new DurationSkipEdgeStrategy(durationLimit);
 
