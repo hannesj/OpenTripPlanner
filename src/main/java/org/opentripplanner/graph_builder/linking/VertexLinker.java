@@ -1,5 +1,6 @@
 package org.opentripplanner.graph_builder.linking;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -21,9 +22,11 @@ import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.routing.vertextype.SplitterVertex;
 import org.opentripplanner.routing.vertextype.StreetVertex;
 import org.opentripplanner.routing.vertextype.TemporarySplitterVertex;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.util.OTPFeature;
 import org.opentripplanner.util.geometry.GeometryUtils;
@@ -87,7 +90,13 @@ public class VertexLinker {
     LinkingDirection direction,
     BiFunction<Vertex, StreetVertex, List<Edge>> edgeFunction
   ) {
-    link(vertex, traverseModes, direction, Scope.PERMANENT, edgeFunction);
+    link(
+      vertex,
+      traverseModes,
+      direction,
+      Scope.PERMANENT,
+      (v1, v2) -> v2 instanceof StreetVertex ? edgeFunction.apply(v1, (StreetVertex) v2) : List.of()
+    );
   }
 
   public DisposableEdgeCollection linkVertexForRealTime(
@@ -96,14 +105,20 @@ public class VertexLinker {
     LinkingDirection direction,
     BiFunction<Vertex, StreetVertex, List<Edge>> edgeFunction
   ) {
-    return link(vertex, traverseModes, direction, Scope.REALTIME, edgeFunction);
+    return link(
+      vertex,
+      traverseModes,
+      direction,
+      Scope.REALTIME,
+      (v1, v2) -> v2 instanceof StreetVertex ? edgeFunction.apply(v1, (StreetVertex) v2) : List.of()
+    );
   }
 
   public DisposableEdgeCollection linkVertexForRequest(
     Vertex vertex,
     TraverseModeSet traverseModes,
     LinkingDirection direction,
-    BiFunction<Vertex, StreetVertex, List<Edge>> edgeFunction
+    BiFunction<Vertex, Vertex, List<Edge>> edgeFunction
   ) {
     return link(vertex, traverseModes, direction, Scope.REQUEST, edgeFunction);
   }
@@ -194,14 +209,14 @@ public class VertexLinker {
     TraverseModeSet traverseModes,
     LinkingDirection direction,
     Scope scope,
-    BiFunction<Vertex, StreetVertex, List<Edge>> edgeFunction
+    BiFunction<Vertex, Vertex, List<Edge>> edgeFunction
   ) {
     DisposableEdgeCollection tempEdges = (scope != Scope.PERMANENT)
       ? new DisposableEdgeCollection(graph, scope)
       : null;
 
     try {
-      Set<StreetVertex> streetVertices = linkToStreetEdges(
+      Set<Vertex> streetVertices = linkToStreetEdges(
         vertex,
         traverseModes,
         direction,
@@ -221,7 +236,7 @@ public class VertexLinker {
           );
       }
 
-      for (StreetVertex streetVertex : streetVertices) {
+      for (Vertex streetVertex : streetVertices) {
         List<Edge> edges = edgeFunction.apply(vertex, streetVertex);
         if (tempEdges != null) {
           for (Edge edge : edges) {
@@ -239,7 +254,7 @@ public class VertexLinker {
     return tempEdges;
   }
 
-  private Set<StreetVertex> linkToStreetEdges(
+  private Set<Vertex> linkToStreetEdges(
     Vertex vertex,
     TraverseModeSet traverseModes,
     LinkingDirection direction,
@@ -271,6 +286,22 @@ public class VertexLinker {
       .collect(Collectors.toList());
 
     if (candidateEdges.isEmpty()) {
+      if (scope == Scope.REQUEST) {
+        List<Vertex> stopsFound = new ArrayList<>();
+        for (RegularStop it : stopModel.findRegularStops(env)) {
+          double distance = Math.round(
+            SphericalDistanceLibrary.distance(
+              vertex.getCoordinate(),
+              it.getCoordinate().asJtsCoordinate()
+            )
+          );
+          if (distance < radiusMeters) {
+            stopsFound.add(graph.getStopVertexForStopId(it.getId()));
+          }
+        }
+
+        return Set.copyOf(stopsFound);
+      }
       return Set.of();
     }
 
