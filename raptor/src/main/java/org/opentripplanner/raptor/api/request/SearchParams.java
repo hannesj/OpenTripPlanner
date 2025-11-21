@@ -30,6 +30,7 @@ public class SearchParams {
   private final int maxNumberOfTransfers;
   private final boolean timetable;
   private final boolean constrainedTransfers;
+  private final boolean oneToMany;
   private final Collection<RaptorAccessEgress> accessPaths;
   private final Collection<RaptorAccessEgress> egressPaths;
   private final List<RaptorViaLocation> viaLocations;
@@ -46,6 +47,7 @@ public class SearchParams {
     maxNumberOfTransfers = RaptorConstants.NOT_SET;
     timetable = false;
     constrainedTransfers = false;
+    oneToMany = false;
     accessPaths = List.of();
     egressPaths = List.of();
     viaLocations = List.of();
@@ -60,6 +62,7 @@ public class SearchParams {
     this.maxNumberOfTransfers = builder.maxNumberOfTransfers();
     this.timetable = builder.timetable();
     this.constrainedTransfers = builder.constrainedTransfers();
+    this.oneToMany = builder.oneToMany();
     this.accessPaths = List.copyOf(builder.accessPaths());
     this.egressPaths = List.copyOf(builder.egressPaths());
     this.viaLocations = List.copyOf(builder.viaLocations());
@@ -184,6 +187,20 @@ public class SearchParams {
   }
 
   /**
+   * Enable one-to-many search mode (isochrone mode). When enabled, the search will explore all
+   * reachable stops without requiring egress paths to a specific destination. This is used for
+   * isochrone calculations where we want to find the best arrival times at all stops within
+   * a given time or cost budget.
+   * <p/>
+   * When this is true, egress paths are optional.
+   * <p/>
+   * The default value is FALSE.
+   */
+  public boolean oneToMany() {
+    return oneToMany;
+  }
+
+  /**
    * List of access paths from the origin to all transit stops using the street network.
    * <p/>
    * Required, at least one access path must exist.
@@ -229,6 +246,7 @@ public class SearchParams {
       searchWindowInSeconds,
       preferLateArrival,
       numberOfAdditionalTransfers,
+      oneToMany,
       accessPaths,
       egressPaths,
       viaLocations
@@ -250,9 +268,10 @@ public class SearchParams {
       searchWindowInSeconds == that.searchWindowInSeconds &&
       preferLateArrival == that.preferLateArrival &&
       numberOfAdditionalTransfers == that.numberOfAdditionalTransfers &&
+      oneToMany == that.oneToMany &&
       accessPaths.equals(that.accessPaths) &&
       egressPaths.equals(that.egressPaths) &&
-      viaLocations.equals(viaLocations)
+      viaLocations.equals(that.viaLocations)
     );
   }
 
@@ -269,6 +288,7 @@ public class SearchParams {
         numberOfAdditionalTransfers,
         dft.numberOfAdditionalTransfers
       )
+      .addBoolIfTrue("oneToMany", oneToMany)
       .addCollection("accessPaths", accessPaths, 5, RaptorAccessEgress::defaultToString)
       .addCollection("egressPaths", egressPaths, 5, RaptorAccessEgress::defaultToString)
       .addCollection("via", viaLocations, 5)
@@ -301,7 +321,10 @@ public class SearchParams {
       "'earliestDepartureTime' or 'latestArrivalTime' is required."
     );
     assertProperty(!accessPaths.isEmpty(), "At least one 'accessPath' is required.");
-    assertProperty(!egressPaths.isEmpty(), "At least one 'egressPath' is required.");
+    // Allow empty egress paths if oneToMany (isochrone mode) is enabled
+    if (!oneToMany) {
+      assertProperty(!egressPaths.isEmpty(), "At least one 'egressPath' is required.");
+    }
     assertProperty(
       !(preferLateArrival && !isLatestArrivalTimeSet()),
       "The 'latestArrivalTime' is required when 'departAsLateAsPossible' is set."

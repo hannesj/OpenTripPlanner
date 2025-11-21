@@ -28,6 +28,7 @@ public class SearchParamsBuilder<T extends RaptorTripSchedule> {
   private int maxNumberOfTransfers;
   private boolean timetable;
   private boolean constrainedTransfers;
+  private boolean oneToMany;
   private final Collection<RaptorAccessEgress> accessPaths = new ArrayList<>();
   private final Collection<RaptorAccessEgress> egressPaths = new ArrayList<>();
   private final List<RaptorViaLocation> viaLocations = new ArrayList<>();
@@ -42,6 +43,7 @@ public class SearchParamsBuilder<T extends RaptorTripSchedule> {
     this.maxNumberOfTransfers = defaults.maxNumberOfTransfers();
     this.timetable = defaults.timetable();
     this.constrainedTransfers = defaults.constrainedTransfers();
+    this.oneToMany = defaults.oneToMany();
     this.accessPaths.addAll(defaults.accessPaths());
     this.egressPaths.addAll(defaults.egressPaths());
     this.viaLocations.addAll(defaults.viaLocations());
@@ -133,6 +135,15 @@ public class SearchParamsBuilder<T extends RaptorTripSchedule> {
     return this;
   }
 
+  public boolean oneToMany() {
+    return oneToMany;
+  }
+
+  public SearchParamsBuilder<T> oneToMany(boolean enable) {
+    this.oneToMany = enable;
+    return this;
+  }
+
   public Collection<RaptorAccessEgress> accessPaths() {
     return accessPaths;
   }
@@ -194,6 +205,7 @@ public class SearchParamsBuilder<T extends RaptorTripSchedule> {
       .addDurationSec("searchWindow", searchWindowInSeconds)
       .addBoolIfTrue("departAsLateAsPossible", preferLateArrival)
       .addNum("numberOfAdditionalTransfers", numberOfAdditionalTransfers)
+      .addBoolIfTrue("oneToMany", oneToMany)
       .addCollection("accessPaths", accessPaths, 5)
       .addCollection("egressPaths", egressPaths, 5)
       .addCollection("via", viaLocations, 10)

@@ -202,8 +202,14 @@ public class StdRangeRaptorConfig<T extends RaptorTripSchedule> {
 
   private ArrivedAtDestinationCheck resolveArrivedAtDestinationCheck() {
     if (arrivedAtDestinationCheck == null) {
-      // Default to simple version
-      withArrivedAtDestinationCheck(createSimpleArrivedAtDestinationCheck());
+      // For isochrone/one-to-many searches, never consider the destination "reached"
+      // so the search explores all stops within the time/cost limits
+      if (ctx.searchParams().oneToMany()) {
+        withArrivedAtDestinationCheck(() -> false);
+      } else {
+        // Default to simple version
+        withArrivedAtDestinationCheck(createSimpleArrivedAtDestinationCheck());
+      }
     }
     return arrivedAtDestinationCheck;
   }
