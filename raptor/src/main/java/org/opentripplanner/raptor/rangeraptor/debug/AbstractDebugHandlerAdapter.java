@@ -1,5 +1,7 @@
 package org.opentripplanner.raptor.rangeraptor.debug;
 
+import gnu.trove.set.TIntSet;
+import gnu.trove.set.hash.TIntHashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
@@ -18,7 +20,7 @@ import org.opentripplanner.raptor.rangeraptor.internalapi.WorkerLifeCycle;
  */
 abstract class AbstractDebugHandlerAdapter<T> implements DebugHandler<T> {
 
-  private final List<Integer> stops;
+  private final TIntSet stops;
   private final List<Integer> path;
   private final int pathStartAtStopIndex;
   private final Consumer<DebugEvent<T>> eventListener;
@@ -29,7 +31,7 @@ abstract class AbstractDebugHandlerAdapter<T> implements DebugHandler<T> {
     Consumer<DebugEvent<T>> eventListener,
     WorkerLifeCycle lifeCycle
   ) {
-    this.stops = debugRequest.stops();
+    this.stops = new TIntHashSet(debugRequest.stops());
     this.path = debugRequest.path();
     this.pathStartAtStopIndex = debugRequest.debugPathFromStopIndex();
     this.eventListener = eventListener;
