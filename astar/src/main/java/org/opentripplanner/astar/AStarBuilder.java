@@ -118,6 +118,11 @@ public abstract class AStarBuilder<
     return builder;
   }
 
+  public Builder withInitialStates(Collection<State> initialStates) {
+    this.initialStates = initialStates;
+    return builder;
+  }
+
   public ShortestPathTree<State, Edge, Vertex> getShortestPathTree() {
     return build().getShortestPathTree();
   }
