@@ -27,6 +27,7 @@ import org.opentripplanner.model.projectinfo.GraphFileHeader;
 import org.opentripplanner.model.projectinfo.OtpProjectInfo;
 import org.opentripplanner.routing.fares.FareServiceFactory;
 import org.opentripplanner.routing.graph.kryosupport.KryoBuilder;
+import org.opentripplanner.routing.graph.kryosupport.PartitionedReferenceResolver;
 import org.opentripplanner.service.osminfo.OsmInfoGraphBuildRepository;
 import org.opentripplanner.service.vehicleparking.VehicleParkingRepository;
 import org.opentripplanner.service.worldenvelope.WorldEnvelopeRepository;
@@ -86,7 +87,10 @@ public class SerializedGraphObject implements Serializable {
   public final StopConsolidationRepository stopConsolidationRepository;
   private final int routingTripPatternCounter;
   public final EmissionRepository emissionRepository;
-  public final @Nullable EmpiricalDelayRepository empiricalDelayRepository;
+
+  @Nullable
+  public final EmpiricalDelayRepository empiricalDelayRepository;
+
   public final FareServiceFactory fareServiceFactory;
   public final StreetRepository streetRepository;
   public final VehicleParkingRepository parkingRepository;
@@ -273,7 +277,9 @@ public class SerializedGraphObject implements Serializable {
     output.close();
     LOG.info("Graph written: {}", graphName);
     // Summarize serialized classes and associated serializers to stdout:
-    // ((InstanceCountingClassResolver) kryo.getClassResolver()).summarize();
+    if (kryo.getReferenceResolver() instanceof PartitionedReferenceResolver resolver) {
+      resolver.summarize();
+    }
   }
 
   private static void logSerializationCompleteStatus(

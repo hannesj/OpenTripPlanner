@@ -3,8 +3,11 @@ package org.opentripplanner.routing.graph.kryosupport;
 import com.conveyal.kryo.TIntArrayListSerializer;
 import com.conveyal.kryo.TIntIntHashMapSerializer;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.ReferenceResolver;
 import com.esotericsoftware.kryo.serializers.ExternalizableSerializer;
+import com.esotericsoftware.kryo.util.DefaultClassResolver;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
+import com.esotericsoftware.kryo.util.MapReferenceResolver;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import de.javakaffee.kryoserializers.guava.ArrayListMultimapSerializer;
@@ -40,7 +43,17 @@ public final class KryoBuilder {
   public static Kryo create() {
     // For generating a histogram of serialized classes with associated serializers:
     // Kryo kryo = new Kryo(new InstanceCountingClassResolver(), new MapReferenceResolver(), new DefaultStreamFactory());
-    Kryo kryo = new Kryo();
+    // Enable with -Dotp.kryo.trackReferenceSlots=true to count which classes consume reference IDs
+    // (applies to the partitioned resolver).
+    boolean usePartitionedResolver = !Boolean.getBoolean("otp.kryo.disablePartitionedResolver");
+    boolean trackReferenceSlots = Boolean.getBoolean("otp.kryo.trackReferenceSlots");
+    ReferenceResolver referenceResolver;
+    if (usePartitionedResolver) {
+      referenceResolver = new PartitionedReferenceResolver(trackReferenceSlots);
+    } else {
+      referenceResolver = new MapReferenceResolver();
+    }
+    Kryo kryo = new Kryo(new DefaultClassResolver(), referenceResolver);
     // Allow serialization of unrecognized classes, for which we haven't manually set up a serializer.
     // We might actually want to manually register a serializer for every class, to be safe.
     kryo.setRegistrationRequired(false);
