@@ -142,6 +142,11 @@ public enum OTPFeature {
     true,
     "When routing with ignoreRealtimeUpdates=true, add an extra step which populates results with real-time data"
   ),
+  IsochroneAPI(
+    false,
+    true,
+    "Enable the isochrone API for calculating travel time and duration isochrones."
+  ),
   ReportApi(false, true, "Enable the report API."),
   SandboxAPIGeocoder(false, true, "Enable the Geocoder API."),
   SandboxAPIMapboxVectorTilesApi(false, true, "Enable Mapbox vector tiles API."),
