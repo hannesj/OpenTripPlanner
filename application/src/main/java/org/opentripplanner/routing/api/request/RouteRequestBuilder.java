@@ -34,6 +34,7 @@ public class RouteRequestBuilder implements Serializable {
   Instant dateTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
   boolean arriveBy;
   boolean timetableView;
+  boolean oneToMany;
   Duration searchWindow;
   Duration maxSearchWindow;
   Instant bookingTime;
@@ -53,6 +54,7 @@ public class RouteRequestBuilder implements Serializable {
     this.dateTime = original.dateTime();
     this.arriveBy = original.arriveBy();
     this.timetableView = original.timetableView();
+    this.oneToMany = original.oneToMany();
     this.searchWindow = original.searchWindow();
     this.maxSearchWindow = original.maxSearchWindow();
     this.bookingTime = original.bookingTime();
@@ -104,6 +106,10 @@ public class RouteRequestBuilder implements Serializable {
     return to;
   }
 
+  public boolean oneToMany() {
+    return oneToMany;
+  }
+
   /**
    * The dateTime will be set to a whole number of seconds. We don't do sub-second accuracy,
    * and if we set the millisecond part to a non-zero value, rounding will not be guaranteed
@@ -153,6 +159,11 @@ public class RouteRequestBuilder implements Serializable {
 
   public RouteRequestBuilder withTimetableView(boolean timetableView) {
     this.timetableView = timetableView;
+    return this;
+  }
+
+  public RouteRequestBuilder withOneToMany(boolean oneToMany) {
+    this.oneToMany = oneToMany;
     return this;
   }
 

@@ -1,6 +1,7 @@
 package org.opentripplanner.routing.core;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -144,6 +145,11 @@ class RouteRequestTest {
   }
 
   @Test
+  void oneToMany() {
+    assertFalse(subject.oneToMany());
+  }
+
+  @Test
   void searchWindow() {
     assertEquals(SEARCH_WINDOW, subject.searchWindow());
   }
@@ -216,7 +222,8 @@ class RouteRequestTest {
         subject.copyOf().withBookingTime(BOOKING_TIME.plusSeconds(10)).buildRequest(),
         subject.copyOf().withPageCursorFromEncoded(null).buildRequest(),
         subject.copyOf().withJourney(JourneyRequest.DEFAULT).buildRequest(),
-        subject.copyOf().withPreferences(RoutingPreferences.DEFAULT).buildRequest()
+        subject.copyOf().withPreferences(RoutingPreferences.DEFAULT).buildRequest(),
+        subject.copyOf().withOneToMany(true).buildRequest()
       );
   }
 
@@ -269,6 +276,13 @@ class RouteRequestTest {
       () -> minimal.copyOf().withTo(GenericLocation.UNKNOWN).buildRequest(),
       RoutingErrorCode.LOCATION_NOT_FOUND,
       InputField.TO_PLACE
+    );
+  }
+
+  @Test
+  void testValidateMissingToOneToMany() {
+    assertDoesNotThrow(() ->
+      RouteRequest.of().withFrom(FROM).withDateTime(DATE_TIME).withOneToMany(true).buildRequest()
     );
   }
 

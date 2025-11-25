@@ -42,6 +42,7 @@ class LinkingContextRequestMapperTest {
     var subject = LinkingContextRequestMapper.map(REQUEST);
     assertEquals(FROM, subject.from());
     assertEquals(TO, subject.to());
+    assertEquals(false, subject.oneToMany());
     assertThat(subject.viaLocationsWithCoordinates()).hasSize(1);
     assertEquals(
       VIA.getFirst().coordinates().getFirst().asJtsCoordinate(),
@@ -51,5 +52,12 @@ class LinkingContextRequestMapperTest {
     assertEquals(ACCESS_MODE, subject.accessMode());
     assertEquals(EGRESS_MODE, subject.egressMode());
     assertEquals(TRANSFER_MODE, subject.transferMode());
+  }
+
+  @Test
+  void mapOneToMany() {
+    var oneToManyRequest = REQUEST.copyOf().withOneToMany(true).buildRequest();
+    var subject = LinkingContextRequestMapper.map(oneToManyRequest);
+    assertEquals(true, subject.oneToMany());
   }
 }

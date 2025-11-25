@@ -323,6 +323,22 @@ class LinkingContextFactoryTest {
   }
 
   @Test
+  void oneToManySkipsToPlaceValidation() {
+    var container = new TemporaryVerticesContainer();
+    var request = LinkingContextRequest.of()
+      .withFrom(GenericLocation.fromCoordinate(stopA.getLat(), stopA.getLon()))
+      .withTo(GenericLocation.fromCoordinate(DISTANT.latitude(), DISTANT.longitude()))
+      .withDirectMode(StreetMode.WALK)
+      .withOneToMany(true)
+      .build();
+
+    var linkingContext = linkingContextFactory.create(container, request);
+    assertThat(linkingContext.findVertices(request.from())).isNotEmpty();
+    assertThat(linkingContext.findVertices(request.to())).isEmpty();
+    container.close();
+  }
+
+  @Test
   void walkingBetterThanTransitException() {
     var container = new TemporaryVerticesContainer();
     var sameLocation = GenericLocation.fromCoordinate(0.0, 0.0);

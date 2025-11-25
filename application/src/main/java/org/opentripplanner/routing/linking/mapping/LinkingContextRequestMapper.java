@@ -7,6 +7,10 @@ import org.opentripplanner.routing.linking.LinkingContextRequest;
 public class LinkingContextRequestMapper {
 
   public static LinkingContextRequest map(RouteRequest request) {
+    return map(request, request.oneToMany());
+  }
+
+  public static LinkingContextRequest map(RouteRequest request, boolean oneToMany) {
     var emptyDirectModeHandler = new FilterTransitWhenDirectModeIsEmpty(
       request.journey().direct().mode(),
       request.pageCursor() != null
@@ -20,6 +24,7 @@ public class LinkingContextRequestMapper {
       .withEgressMode(request.journey().egress().mode())
       .withDirectMode(directMode)
       .withTransferMode(request.journey().transfer().mode())
+      .withOneToMany(oneToMany)
       .build();
   }
 }

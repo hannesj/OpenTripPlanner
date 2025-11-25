@@ -14,6 +14,7 @@ public class LinkingContextRequestBuilder {
   private StreetMode egressMode;
   private StreetMode directMode;
   private StreetMode transferMode;
+  private boolean oneToMany;
 
   public LinkingContextRequestBuilder(LinkingContextRequest original) {
     this.original = original;
@@ -24,6 +25,7 @@ public class LinkingContextRequestBuilder {
     this.egressMode = original.egressMode();
     this.directMode = original.directMode();
     this.transferMode = original.transferMode();
+    this.oneToMany = original.oneToMany();
   }
 
   public LinkingContextRequestBuilder withFrom(GenericLocation from) {
@@ -63,6 +65,11 @@ public class LinkingContextRequestBuilder {
     return this;
   }
 
+  public LinkingContextRequestBuilder withOneToMany(boolean oneToMany) {
+    this.oneToMany = oneToMany;
+    return this;
+  }
+
   public GenericLocation from() {
     return from;
   }
@@ -89,6 +96,10 @@ public class LinkingContextRequestBuilder {
 
   public StreetMode transferMode() {
     return transferMode;
+  }
+
+  public boolean oneToMany() {
+    return oneToMany;
   }
 
   public LinkingContextRequest build() {

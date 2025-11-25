@@ -18,6 +18,7 @@ public class LinkingContextRequest {
   private final StreetMode egressMode;
   private final StreetMode directMode;
   private final StreetMode transferMode;
+  private final boolean oneToMany;
 
   private LinkingContextRequest() {
     this.from = null;
@@ -27,6 +28,7 @@ public class LinkingContextRequest {
     this.egressMode = StreetMode.NOT_SET;
     this.directMode = StreetMode.NOT_SET;
     this.transferMode = StreetMode.NOT_SET;
+    this.oneToMany = false;
   }
 
   public LinkingContextRequest(LinkingContextRequestBuilder builder) {
@@ -37,6 +39,7 @@ public class LinkingContextRequest {
     this.egressMode = builder.egressMode();
     this.directMode = builder.directMode();
     this.transferMode = builder.transferMode();
+    this.oneToMany = builder.oneToMany();
   }
 
   public static LinkingContextRequestBuilder of() {
@@ -76,6 +79,10 @@ public class LinkingContextRequest {
     return transferMode;
   }
 
+  public boolean oneToMany() {
+    return oneToMany;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (o == null || getClass() != o.getClass()) {
@@ -89,7 +96,8 @@ public class LinkingContextRequest {
       accessMode == other.accessMode &&
       egressMode == other.egressMode &&
       directMode == other.directMode &&
-      transferMode == other.transferMode
+      transferMode == other.transferMode &&
+      oneToMany == other.oneToMany
     );
   }
 
@@ -102,7 +110,8 @@ public class LinkingContextRequest {
       accessMode,
       egressMode,
       directMode,
-      transferMode
+      transferMode,
+      oneToMany
     );
   }
 
@@ -116,6 +125,7 @@ public class LinkingContextRequest {
       .addEnum("egressMode", egressMode, DEFAULT.egressMode)
       .addEnum("directMode", directMode, DEFAULT.directMode)
       .addEnum("transferMode", transferMode, DEFAULT.transferMode)
+      .addBool("oneToMany", oneToMany, DEFAULT.oneToMany)
       .toString();
   }
 }

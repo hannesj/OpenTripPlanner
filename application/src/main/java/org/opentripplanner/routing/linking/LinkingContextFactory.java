@@ -92,7 +92,8 @@ public class LinkingContextFactory {
       to,
       toVertices,
       visitViaLocationsWithCoordinates,
-      verticesForVisitViaLocationsWithCoordinates
+      verticesForVisitViaLocationsWithCoordinates,
+      request.oneToMany()
     );
     addAdjustedEdges(
       container,
@@ -361,7 +362,8 @@ public class LinkingContextFactory {
     @Nullable GenericLocation to,
     Set<Vertex> toVertices,
     List<GenericLocation> visitViaLocationsWithCoordinates,
-    Map<GenericLocation, Set<Vertex>> visitViaLocationVertices
+    Map<GenericLocation, Set<Vertex>> visitViaLocationVertices,
+    boolean oneToMany
   ) {
     List<RoutingError> routingErrors = new ArrayList<>();
 
@@ -373,7 +375,9 @@ public class LinkingContextFactory {
     }
 
     // check that vertices where found if to-location was specified
-    if (to != null && to.isSpecified() && isDisconnected(toVertices, LocationType.TO)) {
+    if (
+      !oneToMany && to != null && to.isSpecified() && isDisconnected(toVertices, LocationType.TO)
+    ) {
       routingErrors.add(
         new RoutingError(getRoutingErrorCodeForDisconnected(to), InputField.TO_PLACE)
       );
@@ -397,7 +401,7 @@ public class LinkingContextFactory {
 
     // if from and to share any vertices, the user is already at their destination, and the result
     // is a trivial path
-    if (!Sets.intersection(fromVertices, toVertices).isEmpty()) {
+    if (!oneToMany && !Sets.intersection(fromVertices, toVertices).isEmpty()) {
       routingErrors.add(new RoutingError(RoutingErrorCode.WALKING_BETTER_THAN_TRANSIT, null));
     }
 

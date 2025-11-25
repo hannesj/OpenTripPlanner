@@ -67,6 +67,7 @@ public class RouteRequest implements Serializable {
   private final JourneyRequest journey;
   private final RoutingPreferences preferences;
   private final int numItineraries;
+  private final boolean oneToMany;
   private final boolean defaultRequest;
 
   /* CONSTRUCTORS */
@@ -86,6 +87,7 @@ public class RouteRequest implements Serializable {
     this.journey = JourneyRequest.DEFAULT;
     this.preferences = RoutingPreferences.DEFAULT;
     this.numItineraries = DEFAULT_NUM_ITINERARIES;
+    this.oneToMany = false;
     this.defaultRequest = true;
   }
 
@@ -107,6 +109,7 @@ public class RouteRequest implements Serializable {
     this.journey = builder.journey;
     this.preferences = builder.preferences;
     this.numItineraries = builder.numItineraries;
+    this.oneToMany = builder.oneToMany;
     this.defaultRequest = builder.defaultRequest;
 
     validate();
@@ -249,7 +252,7 @@ public class RouteRequest implements Serializable {
       );
     }
 
-    if (to == null || !to.isSpecified()) {
+    if (!oneToMany && (to == null || !to.isSpecified())) {
       routingErrors.add(new RoutingError(RoutingErrorCode.LOCATION_NOT_FOUND, InputField.TO_PLACE));
     }
 
@@ -410,6 +413,14 @@ public class RouteRequest implements Serializable {
   }
 
   /**
+   * Whether the request is a one-to-many search (for example an isochrone). If {@code true} the
+   * {@code to} location may be omitted.
+   */
+  public boolean oneToMany() {
+    return oneToMany;
+  }
+
+  /**
    * The maximum number of itineraries to return. In OTP1 this parameter terminates the search, but
    * in OTP2 it crops the list of itineraries AFTER the search is complete. This parameter is a post
    * search filter function. A side effect from reducing the result is that OTP2 cannot guarantee to
@@ -451,7 +462,8 @@ public class RouteRequest implements Serializable {
       Objects.equals(bookingTime, other.bookingTime) &&
       Objects.equals(pageCursor, other.pageCursor) &&
       Objects.equals(journey, other.journey) &&
-      Objects.equals(preferences, other.preferences)
+      Objects.equals(preferences, other.preferences) &&
+      oneToMany == other.oneToMany
     );
   }
 
@@ -470,7 +482,8 @@ public class RouteRequest implements Serializable {
       pageCursor,
       journey,
       preferences,
-      numItineraries
+      numItineraries,
+      oneToMany
     );
   }
 
@@ -481,6 +494,7 @@ public class RouteRequest implements Serializable {
       .addCol("via", via)
       .addDateTime("dateTime", dateTime)
       .addBoolIfTrue("arriveBy", arriveBy)
+      .addBoolIfTrue("oneToMany", oneToMany)
       .addBoolIfTrue("timetableView: false", !timetableView)
       .addDuration("searchWindow", searchWindow)
       .addDuration("maxSearchWindow", maxSearchWindow)
@@ -516,7 +530,7 @@ public class RouteRequest implements Serializable {
    * Validate that the routing request contains both a from location(origin) and a to
    * location(destination). Origin and destination can be specified either by a reference to a stop
    * place or by geographical coordinates. From/to locations are required in a one-to-one
-   * search, but not in a many-to-one or one-to-many(legacy, not supported any more).
+   * search, but the {@code to} location may be omitted in a one-to-many search.
    *
    * @throws RoutingValidationException if either origin or destination is missing.
    */
@@ -536,7 +550,7 @@ public class RouteRequest implements Serializable {
       );
     }
 
-    if (to == null || !to.isSpecified()) {
+    if (!oneToMany && (to == null || !to.isSpecified())) {
       routingErrors.add(new RoutingError(RoutingErrorCode.LOCATION_NOT_FOUND, InputField.TO_PLACE));
     }
     return routingErrors;

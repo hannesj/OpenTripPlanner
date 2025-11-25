@@ -21,6 +21,7 @@ class LinkingContextRequestTest {
   private static final StreetMode EGRESS_MODE = StreetMode.BIKE_RENTAL;
   private static final StreetMode DIRECT_MODE = StreetMode.CAR;
   private static final StreetMode TRANSFER_MODE = StreetMode.WALK;
+  private static final boolean ONE_TO_MANY = true;
 
   private final LinkingContextRequest subject = LinkingContextRequest.of()
     .withFrom(FROM)
@@ -30,6 +31,7 @@ class LinkingContextRequestTest {
     .withEgressMode(EGRESS_MODE)
     .withDirectMode(DIRECT_MODE)
     .withTransferMode(TRANSFER_MODE)
+    .withOneToMany(ONE_TO_MANY)
     .build();
 
   @Test
@@ -68,6 +70,11 @@ class LinkingContextRequestTest {
   }
 
   @Test
+  void oneToMany() {
+    assertEquals(ONE_TO_MANY, subject.oneToMany());
+  }
+
+  @Test
   void testEqualsAndHashCode() {
     // Return same object if no value is set
     assertSame(subject, subject.copyOf().build());
@@ -95,7 +102,8 @@ class LinkingContextRequestTest {
       "accessMode: WALK, " +
       "egressMode: BIKE_RENTAL, " +
       "directMode: CAR, " +
-      "transferMode: WALK}",
+      "transferMode: WALK, " +
+      "oneToMany: true}",
       subject.toString()
     );
   }
